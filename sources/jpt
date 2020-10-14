@@ -30,6 +30,7 @@ read -r -d '' JSCode <<-'EOF'
 //jsc lacked printErr() in 10.4-10.7
 if (typeof printErr === "undefined" ) { function printErr(string) { debug(string) } }
 
+
 // JSONPath 0.9.10 (slim normalize)- XPath for JSON
 // Copyright (c) 2020 Joel Bruner (https://github.com/brunerd)
 // Copyright (c) 2020 "jpaquit" (https://github.com/jpaquit)
@@ -2213,8 +2214,7 @@ if((query === "$" || query === "" ) && !option.j && !option.r) {
 }
 else {
 	//turn query into the array jsonPath is expecting
-	var queryObject = objectifyExpressions([query],{'disallowData':true,'allowExpressions':true})[0].path
-
+	try { var queryObject = objectifyExpressions([query],{'disallowData':true,'allowExpressions':true})[0].path } catch(e){printErr(e); quit()}
 
 	try { var resultObject = jsonPath(obj, queryObject, (option.j || option.r) ? {'resultType': option.d ? "PATH_DOTTED" : option.r ? "PATH_JSONPOINTER" : "PATH", 'singleQuoteKeys':option.q} : null); } catch(error) { printErr(error); quit() };
 }
