@@ -1,10 +1,3 @@
-#!/usr/bin/env zsh
-#!/usr/bin/env bash
-#choose your shell, works in both
-#############
-# FUNCTIONS #
-#############
-
 function jpt #([options] [query] [fileArg])
 {
 #version 0.9.0
@@ -30,9 +23,3 @@ EOT
 if [ -z "${jsc}" ]; then locations=( "/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current" "/usr/bin/jsc" "/usr/libexec/webkit2gtk*" )
 for loc in ${locations[@]}; do jsc=$(find -L "${loc}" -name 'jsc' -maxdepth 2 2>/dev/null); [ -n "${jsc}" ] && break; done; fi; if [ -n "${fileArg}" -a ! -f "${fileArg}" -a "${fileArg}" != '/dev/stdin' ]; then echo "File not found: ${fileArg}" >&2;return 1;elif [ -n "${fileArg}" ]; then readFileSupport="$(${jsc} -e 'print(typeof readFile === "function")')"; fi;if [ "$(stat -f %z "${fileArg:=/dev/stdin}")" -ge 2147483648 ]; then echo "File exceeds maximum size (2GiB)!" >&2; return 1; fi; local errOut; if [ "${readFileSupport}" = "false" ]; then { errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}" <<< "$(sed '/^$/d' "${fileArg:-/dev/stdin}")" ; } 1>&3 ; } 2>&1); } 3>&1; elif [ -f "${fileArg:=/dev/stdin}" ]; then { errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "${fileArg}" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}"; } 1>&3 ; } 2>&1); } 3>&1; else { errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "/dev/stdin" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}" <<< "$(cat)"; } 1>&3 ; } 2>&1); } 3>&1; fi;if [ -n "$(sed -e '/^--> Debug:/d' <<< "${errOut}")" ]; then /bin/echo "$errOut" >&2; return 1; fi
 }
-
-
-#call the function and pass all arguments
-jpt "$@"
-
-exit $?
