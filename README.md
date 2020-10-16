@@ -41,7 +41,7 @@ JSON Output Options:
 	-u Escape all string characters above 0x7F as UTF-16 surrogate pairs \u
 	-a Always return an array, inhibit reduction of single element arrays, will return [] for nothing
 	-F Flatten arrays if possible
-	-N Nesting reduction, enclosing arrays will be removed stoppping when length > 1
+	-N Nesting reduction, enclosing arrays will be removed stoppping when array length is greater than 1 or is an object
 
 Alternate Output Modes:
 	-l output the length of the array, number of keys in an object, or length of string
