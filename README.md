@@ -30,8 +30,8 @@ Options:
 	-h this help file
 
 Processing Options:
-	-S Treats the input (file or stdin) as if it were a JSON string
-	-I Inhibit path inference for JSON Path Object Literals
+	-S Input (file or stdin) as a JSON string
+	-I Inhibit path inference for JSON Path Object Literals lacking hierarchical initializers
 	-G "Gripe" mode, gripes about more things. Importing Object Literals, JSON Path during JSON Patch ops
 	-k Disallow processing JSON Object Literals (by default it does) (see -L for outputting JSOL)
 	-g Use null for values when path-only JSON Object literals are ingested
@@ -65,6 +65,12 @@ Alternate Output Modes:
 				<value> is any valid JSON valid and ALSO single quoted strings
 					Example: 'string', "string", [], {}, 42, true, false, null
 
+	-L, -J, and -R options:
+		-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects
+		-Z "<int>" Depth
+			Combined with -L it will coalesce lower depth levels into a compound JSON object/array
+			Combined with -P, -J or -R will return only purely primitive nodes at or below the Z level
+
 	JSON Path output options for -L -J and -j:
 		-d Use dot notation rather than bracket notation, when possible
 		-q Use single quotes for bracketed key names
@@ -73,7 +79,7 @@ Alternate Output Modes:
 
 	-T output resulting data as Text aka "Trampling" by omitting all structures and key names
 		-e Print escaped characters literally: \b \f \n \r \t \\
-		-n Print null as the string 'null'
+		-n Print null values as the string 'null'
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
 
 		-E "<value>" encoding options for -T output:
@@ -96,12 +102,7 @@ Alternate Output Modes:
 			B binary value (UTF-16), 8 bit wide (all)
 			b binary value (UTF-8), 8 bit wide (all)
 				Binary note: Numbers are converted to "positional" binary
-							 This is NOT the internal representation
-
-		-L,J,R options:
-			-P Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects
-			-Z "<int>" Depth, with -P,J,T will truncate returning only primitive data elements at or below the level
-				With -L it will coalesce higher depth levels into JSON objects and arrays
+				This is NOT the internal representation
 
 Data Alteration:
 	Data can be manipulated by applying a JSON Patch file or an inline statement (-X and -x)
@@ -160,15 +161,14 @@ JSON Path Primer
 	['key] or ["key"] - quoted keys can accomodate any name, \u Unicode escaping will be processed
 		.. may precede a bracket, otherwise put them next to each other with no spaces, no dots
 	.* ..* or [*] - the values of all the keys within an object or indices in an array
-	[start:stop:step] - slice, behavior like Python, use integers, if blank start and stop default to their bounds +1
-		Note: Step can be negative, if so flip start/end. Script expressions may be used also.
+	[start:stop:step] - slice, behavior like Python, accepts integers (pos or neg), script expressions, or empty
 	[?(@.subKey == "This One!")] - filter expression substitute @ with the current object level
-		  Comparison operators: can be =="sting", !="string" and also regex with =~ /string/ 
-	[(@.length/2)] - script expression returns value, usually good for arrays. Works in slices.
+		  Comparison operators: can be ==, != and also regex =~ /string/ 
+	[(@.length/2)] - script expression returns value, good for arrays. Works in slices.
 	[-] - for data alteration ops, used to add to the end of an array
 	[1] - and array index, use any integers
-	[,] - a comma separated union can collect the values of multiple properties at the same level in an object
-		 You can use: quoted key names, unquoted numbers, stars, filter and script expressions, dash, and star
+	["a","b"] - a comma separated union can collect the values of multiple properties at the same level in an object
+		 You can use: quoted key names, numbers, star, filter and script expressions
 
 	Horrible example: $["wow"].this['is'][1][?(@.ugly == "query")]
 
@@ -179,6 +179,7 @@ JSON Pointer
 	/1 - property named key in an object or a numeric object name in a key
 	/- references the end of an array, where the next value goes
 	A literal / must be escaped with ~0 and a literal ~ must be escaped with ~1
+
 ```
 
 ### Requirements:
