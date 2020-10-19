@@ -5,18 +5,17 @@
 # FUNCTIONS #
 #############
 
-#v0.9.1
+#v0.9.2
 function jpt #([options] [query] [fileArg])
 {
 : <<-LICENSE_BLOCK
-jpt - JSONPath Tool (JSON Please, Thanks) (JSON Pretty-print) (JSON Parsed to Text) (JSON Prosze Tlumaczyc)
+jpt - JSON Power Tool aka (JSON Please, Thanks) (JSON PreTtyprint) (JSON Parsed to Text) (JSON Prosze Tlumaczyc)
 Copyright (c) 2020 Joel Bruner (https://github.com/brunerd)
 Other portions:
 Copyright (c) 2020 "jpaquit" (https://github.com/jpaquit)
 Copyright (c) 2016 Kris Nye
 Copyright (c) 2012 Dharmafly
 Copyright (c) 2007 Stefan Goessner (goessner.net)
-
 Licensed under the MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -26,9 +25,6 @@ LICENSE_BLOCK
 
 #our Javascript as a shell variable
 read -r -d '' JSCode <<-'EOF'
-//strict will prohibit octal in filters
-"use strict";
-
 /***********\
 | FUNCTIONS |
 \***********/
@@ -36,89 +32,70 @@ read -r -d '' JSCode <<-'EOF'
 //jsc lacked printErr() in 10.4-10.7
 if (typeof printErr === "undefined" ) { function printErr(string) { debug(string) } }
 
-// JSONPath 0.9.10 (slim normalize)- XPath for JSON
-// Copyright (c) 2020 Joel Bruner (https://github.com/brunerd)
-// Copyright (c) 2020 "jpaquit" (https://github.com/jpaquit)
-// Copyright (c) 2007 Stefan Goessner (goessner.net)
-// Licensed under the MIT License
 
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+//brunerd JSONPath 0.9.12 (slim normalize)- XPath for JSON
 function jsonPath(obj, expr, arg) {
 	var P = {
-		//Possible resultType values:
-			//VALUE - returns the actual value of the requested object
-			//PATH - returns a string of the JSONPath(s) matched by the expression expr
-			//PATH_DOTTED - JSONPath strings, except all key names are written in dot notation when possible
-			//PATH_JSONPOINTER - returns a string in JSON Pointer format of the path(s) matched by the expression expr
 		resultType: arg && arg.resultType || "VALUE",
-		//singleQuoteKeys use with PATH and PATH_DOTTED to use single quotes for any quoted key names
 		singleQuoteKeys: arg && arg.singleQuoteKeys || false,
-		//escapeUnicode use with PATH and PATH_DOTTED to replace char codes \u0080-\uffff with \u Unicode escape sequences (\u001f and below are already escaped by default) 
 		escapeUnicode: arg && arg.escapeUnicode || false,
 		result: [],
-		normalize: function(expr) {		
-			//work on strings only, pass through all others (like a pre-objectified path array)
-			if (expr.constructor === null || expr.constructor !== String) { return expr }
+		normalize: function(expr) {
 
-			//snip
+			if (expr.constructor === null || expr.constructor !== String) { return expr }
+			//objectifyExpressions ensures strings are already parsed into objects
+			//SNIP
 		},
-		asPath: function(path) {			
+		asPath: function(path) {
 			if(P.resultType === "PATH_OBJECT"){ return {"path":path} }
-			
+
 			var qt = P.singleQuoteKeys ? "'" : '"';
 			var p=(P.resultType === "PATH_JSONPOINTER" ? "" : "$");
 			var x = path.slice()
-			
-			//create p, the path string representation
-			for (var i=0,n=x.length; i<n; i++){
-				
-				if(P.resultType === "PATH_JSONPOINTER") {
-					p += "/" + (x[i].constructor === Number ? x[i] : x[i].replace(/~/g,"~0").replace(/\//g,"~1"))
-				}
-				//else JSONPath string
-				else {
-					var pathString = x[i].constructor === Number ? "["+x[i]+"]" : (P.resultType === "PATH_DOTTED" && /^[A-Za-z_$][\w\d$]*$/.test(x[i]) ? "." + x[i] : ("["+ qt + (P.singleQuoteKeys ? x[i].replace(/'/g,"\\'") : x[i].replace(/"/g,'\\"')) + qt + "]").replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u001f\u007f]/g, function(chr) {return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4)}));					
 
-					//escape Unicode characters \u style
+			for (var i=0,n=x.length; i<n; i++){
+
+				if(P.resultType === "PATH_JSONPOINTER") {
+				}
+				else {
+					var pathString = x[i].constructor === Number ? "["+x[i]+"]" : (P.resultType === "PATH_DOTTED" && /^[A-Za-z_$][\w\d$]*$/.test(x[i]) ? "." + x[i] : ("["+ qt + (P.singleQuoteKeys ? x[i].replace(/'/g,"\\'") : x[i].replace(/"/g,'\\"')) + qt + "]").replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u001f\u007f]/g, function(chr) {return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4)}));
+
 					if (P.escapeUnicode){
 						pathString = pathString.replace(/[\u007F-\uFFFF]/g, function(chr) { return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4) })
-					}				
+					}
 					p += pathString
 				}
 			}
 			return p;
 		},
 		store: function(p, v) {
-			//if we are escaping unicode and a string
 			if (P.escapeUnicode && v !== null && v.constructor === String){
 				v = v.replace(/[\u007F-\uFFFF]/g, function(chr) { return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4) })
-			}				
+			}
 
 			if (p) { P.result[P.result.length] = /^PATH/.test(P.resultType) ? P.asPath(p) : v }
 			return !!p;
 		},
 		trace: function(expr, val, path) {
-			
+
 			if(expr === false) return expr
-			
-			//if we have an expression
+
 			if (expr.length) {
 
-				var x = expr.slice()								
+				var x = expr.slice()
 				var loc = x.shift();
 
-				if (loc === false) { return loc }
-				
-				//if loc is negative and val is an array or string, resolve the negative index
+				if(val !== null && Array.isArray(val) && loc.constructor === String && loc.match(/^0/)){
+					throw new Error("Property name '"+ loc +"' is a string with leading zeros and target is an array!")
+				}
+				else if(val !== null && val.constructor === Object && loc.constructor === Number){
+					throw new Error("Property '"+ loc +"' is a number and target is an object!")
+				}
+
 				if(loc.constructor === Number && Math.sign(loc) === -1 && (val instanceof Array || val.constructor === String)) { 
 					loc = (val.length+loc) 
 				}
-								
-				//an array represents a union, it can store: strings (key names), numbers (array indices or numeric property names), and objects (expressions)
-				//example: ["key",0,{"expression":"*"},{"expression":"?(@name =~ /key.*/)"}]
+
 				if(Array.isArray(loc)){
 					for (i=0; i<loc.length; i++) {
 						var tx = x.slice()
@@ -126,30 +103,23 @@ function jsonPath(obj, expr, arg) {
 						P.trace(tx, val, path)
 					}
 				}
-				//{"expression":"..."} -  an singular object containing an expression key
-				else if(loc.constructor === Object) {					
-					//[0,1,null] - an array in an expression is a slice
+				else if(loc.constructor === Object) {
 					if(Array.isArray(loc.expression)){
 						P.slice(loc.expression, x, val, path);
 					}
-					//* - star wildcard character
 					else if (loc.expression === "*") {
 						P.walk(loc.expression, x, val, path, function(m,l,x,v,p) { var tx = x.slice(); tx.unshift(m); P.trace(tx,v,p); });
-					}					
-					//.. recursive descent
+					}
 					else if (loc.expression === "..") {
 						P.trace(x, val, path);
 						P.walk(loc, x, val, path, function(m,l,x,v,p) { var tx = x.slice(); tx.unshift({"expression":".."}); var tp = p.slice(); tp.push(m); typeof v[m] === "object" && P.trace(tx,v[m],tp); });
 					}
-					//(expr) - a script expression, the actual result is used as the key name
 					else if (/^\(.*?\)$/.test(loc.expression))
 					{
 						var tx = x.slice();
 						tx.unshift(P.eval(loc.expression, val, path[path.length-1]))
 						P.trace(tx, val, path);
 					}
-					//- - dash operator, borrowed from JSON Pointer, represents the point AFTER the last array element
-					//this is NOT needed for search but it is how the [-] expression would be resolved for a JSON Patch operation
 					else if (/^-$/.test(loc.expression))
 					{
 						if(val !== null && Array.isArray(val)) {
@@ -158,7 +128,6 @@ function jsonPath(obj, expr, arg) {
 							P.trace(tx, val, path);
 						}
 					}
-					//?(expr) - a filter expression, this tests an expression and if true will descend into that key or return it's value
 					else if (/^\?\(.*?\)$/.test(loc.expression)){
 						P.walk(loc.expression, x, val, path, function(m,l,x,v,p) {
 							if (P.eval(l.replace(/^\?\((.*?)\)$/,"$1"), v instanceof Array ? v[m] : v, m)) {
@@ -166,21 +135,17 @@ function jsonPath(obj, expr, arg) {
 							} 
 						});
 					}
-				}					
-				//else we are either a string or a number
+				}
 				else if (val && val[loc] !== undefined) {
 					var tpath = path.slice()
-					//if this is an array, store loc as Number so it is NOT quoted in PATH or PATH_DOTTED output
 					tpath.push(Array.isArray(val) ? Number(loc) : loc)
 					P.trace(x, val[loc], tpath);
 				}
 			}
-			//else no expr left, just store the results along with it's path
 			else {
 				P.store(path, val);
 			}
 		},
-		//walk - used by * .. and ?() to interrogate the object
 		walk: function(loc, expr, val, path, f) {
 			if (val instanceof Array) {
 				for (var i=0,n=val.length; i<n; i++) {
@@ -197,21 +162,18 @@ function jsonPath(obj, expr, arg) {
 				}
 			}
 		},
-		//slice - same behavior as Python
 		slice: function(loc, expr, val, path) {
 
-			//now allows for string slicing
 			if (val !== null && val.constructor === String) {
 				val = val.split('')
 				var isString=true
 			} else { var isString=false }
-			
+
 			if (val instanceof Array) {
 				var str="", len, start, end, step=1;
-				
-				//if the loc array has any undefined holes set them to null
+
 				loc[0]=loc[0] !== undefined ? loc[0] : null; loc[1]=loc[1] !== undefined ? loc[1] : null; loc[2]=loc[2] !== undefined ? loc[2] : null
-				
+
 				if ((loc[2] === null || loc[2].constructor === Number ? loc[2] : P.eval(loc[2].expression,val,path[path.length-1])) === 0) { 
 					throw new RangeError("Slice step cannot be zero: [" + loc.join(":") + "]") 
 				}
@@ -229,80 +191,63 @@ function jsonPath(obj, expr, arg) {
 				start=parseInt((loc[0] === null || loc[0].constructor === Number ? loc[0] : P.eval(loc[0].expression,val,path[path.length-1]))||((loc[0] === null || loc[0].constructor === Number ? loc[0] : P.eval(loc[0].expression,val,path[path.length-1])) === 0 ? 0 : start));
 				end = (loc[1] === 0) ? 0 : parseInt((loc[1] === null || loc[1].constructor === Number ? loc[1] : P.eval(loc[1].expression,val,path[path.length-1]))||end)
 
-				//adjust the bounds of the default depending on the value and the type of step in cases of negative values
 				start = (start < 0) ? Math.max(Math.sign(step) === -1 ? -1 : 0,start+len) : Math.min(len,start);
 				end = (end < 0) ? Math.max(Math.sign(step) === -1 ? -1 : 0,end+len) : Math.min(len,end);
-				
-				//if step is negative go the other way
+
 				if(Math.sign(step) === -1){ var op=">" } else { var op="<" }
-				
-				//use eval to resolve op 
+
 				for (var i=start; eval(i+op+end); i+=step){
-					//strore arrays proper
 					if(!isString){ 
 						var texpr = expr.slice()
 						texpr.unshift(i)
-						P.trace(texpr, val, path);					
+						P.trace(texpr, val, path);
 					}
-					//collect characters into a string
 					else{
 						str += val[i] 
 					}
 				}
-				//store combined sliced string along with this single path
 				if(isString){ 
 					P.store(path, str);
 				}
     		}
 		},
 		eval: function(x, _v, _vname) {
-			
+
 			var tx = x.slice()
-			
-			//if this is a () expression, strip the outer parens
+
 			if ((/^\(.*?\)$/).test(x)) { tx = tx.replace((/^\((.*?)\)$/),"$1") }
-			
-			//remove all all data between "" '' and //, split by semi-colon
-			//remove all spaces before ( and collapse multiple spaces down to a single space
+
 			var forbiddenInvocations=tx.split('').reverse().join('')
 				.replace(/(["'])(.*?)\1(?!\\)/g, "")
 				.replace(/(\/.*?\/(?!\\)\s*~=)|(=~*\s\/.*?\/(?!\\))/g, "")
 				.replace(/\(\s*/g,"(").replace(/([;\.\+\-~\!\*\/\%\>\<\&\^\|\:\?\,])/g, " ")
 				.replace(/\s+/g," ")
-				//turn things back around and split on the space
 				.split('').reverse().join('').split(' ')
-				//anything that remains with ( that not at the beginning of a line and has character before it
 				.filter(function(f){return (/\(/).test(f)})
-				.filter(function(f){return (/[!^]\(|[\w\d_$]\(/).test(f)})			
-				//only allow three functions tolerated
+				.filter(function(f){return (/[!^]\(|[\w\d_$]\(/).test(f)})
 				.filter(function(f){return !((/test\(|exec\(|match\(/).test(f))})
-			
+
 			if(forbiddenInvocations.length){ throw new Error("Invocation violation: " + forbiddenInvocations) };
-			
+
 			try {
-				var evalResult = eval(x.replace(/(^|[^\\])@/g, "$1_v")				
+				var evalResult = eval(x.replace(/(^|[^\\])@/g, "$1_v")
 					.replace(/\\@/g, "@")
-					//ruby regex handling from jpaquit
-					//_v substitution on the left side
 					.replace(/(_v(?:(?!(\|\||&&)).)*)=~((?:(?!\)* *(\|\||&&)).)*)/g, 
 						function(match, p1, p2, p3, offset, currentString) {
 							return match ? p3.trim()+'.test('+p1.trim()+')' : match
 						}
 					)
-					//ruby regex with the _v substitution on the right side
 					.replace(/((?:(?!\)* *(\|\||&&)).)*)\s+=~\s+(_v(?:(?!(\|\||&&)).)*)/g, 
 						function(match, p1, p2, p3, offset, currentString) {
 							return match ? p1.trim()+'.test('+p3.trim()+')' : match
 						}
 					)
 				);
-				
-				//return false if falsey
+
 				if(evalResult === undefined || evalResult === null || (evalResult.constructor === Number && Math.sign(evalResult) === -1) ) { 
 					return false 
 				}
 				else {
-					//we use floor in case of division, to ensure result is an integer
 					return evalResult.constructor === Number ? Math.floor(evalResult) : evalResult
 				}
 			}
@@ -325,14 +270,11 @@ function jsonPath(obj, expr, arg) {
 		}
 	};
 
-	//allows $ to be used in filter expressions
 	var $ = obj;
 
 	if (expr && obj !== undefined && (P.resultType == "VALUE" || /^PATH/.test(P.resultType))) {
-		//normalize the JSONPath expression and send to trace along with the obj data and the beginning of the -p path output ["$"]
-		P.trace(P.normalize(expr), obj, []);		
-		
-		//return P.result or an empty array
+		P.trace(P.normalize(expr), obj, []);
+
 		return P.result.length ? P.result : [];
 	}
 }
@@ -544,10 +486,7 @@ function renderObject(obj,pathName,option,level) {
 							);
 						}
 					}
-					//this caps everything dummy!
-					//tempArray = tempArray.filter(function(a){return a}).map(function(a){return a.toUpperCase()})
 
-					//obj=option.encoding.H ? tempArray.join("").toUpperCase() : tempArray.join("")
 					obj=tempArray.join("");
 					if(option.encoding.H){ obj=obj.toUpperCase() }
 				}
@@ -665,21 +604,14 @@ function renderObject(obj,pathName,option,level) {
 //normalize to bracket with single quote
 function objectifyExpressions(array,option)
 {
-	"use strict";
 	option = option || {};
 	
 	//option.allowExpressions = Disallow JSONPath expressions
-	//option.q = use single quotes for literals (double quotes is the default)
-	//option.d = use dot formatting when possible (default is brackets)
-	//option.pathParent = output the given path (literal or expression) without the last (child) element
 	//option.expandTrailingUnion = expand a union expression as discreet lines
-	//option.jsonPointerOutput = if path is free of expressions will output JSON Pointer, otherwise will error
-	//option.returnObject - returns an object representation of JSONPath rather than a string representation
-	//option.disallowData - error if data is found
+	//option.disallowData - error if data is found along with path expression
 
 	
 	try {
-		//.filter(function(e) {return e != '';})
 		//go through the array of literals, remove any empty lines
 		array = array.map(function(expr){
 				var pathStack=[]
@@ -698,12 +630,9 @@ function objectifyExpressions(array,option)
 					pathStack = expr.split('/')
 					//throw out first entry
 					pathStack.shift()
-					//replace special symbols with character
+					//replace special symbols with actual characters
 					pathStack = pathStack.map(function (f){ 
 						return f.replace(/~1/g,"/").replace(/~0/g,"~") })
-							.map(function(a){ return a === "" ? "" : isNaN(a) ? a : Number(a)})
-					//quick hack to fake it
-					//if(pathStack[pathStack.length-1] === "-"){ pathStack[pathStack.length-1] = {"expression":"(@.length)"} }
 					if(pathStack[pathStack.length-1] === "-"){ pathStack[pathStack.length-1] = {"expression":"-"} }
 				}
 				//if $ then process as JSONPath
@@ -842,10 +771,13 @@ function objectifyExpressions(array,option)
 									if (needsDelimiter && !isSlice) { Level2Regex.lastIndex=subLastLastIndex; break; } else { needsDelimiter=true }
 									if (isSlice && intraSlice) { intraSlice=false }
 
-									//eval in strict to catch octals, regex limits characters here, so eval is safe
-									try {!eval(L2Match[4])} catch(e){throw new Error(e + ": " + L2Match[4])}
-									//subArray.unshift(Number(L2Match[4]))
-									pendingData.unshift(Number(L2Match[4]))
+									//catch octals indices regardless of strict mode
+									if (L2Match[4] !== "0" && (L2Match[4][0] === "0" || (L2Match[4][0] === "-" && L2Match[4][1] === "0"))){
+										throw new Error("Octal indices are disallowed: " + L2Match[4])
+									}
+									else{
+										pendingData.unshift(Number(L2Match[4]))
+									}
 								}
 								//(-) - from JSON Pointer, represents the index AFTER the last one, always non-existent
 								else if(L2Match[5]){
@@ -1052,7 +984,7 @@ function objectifyExpressions(array,option)
 						assignmentData='"' + assignmentData.substring(1,assignmentData.length-1).replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'
 					}
 												
-					//let JSON.parse do the work to validate and convert to object form
+					//JSON.parse can do the work to validate and convert to object form
 					try { 
 						var assignmentData_obj = JSON.parse(assignmentData,null,0) 
 					} 
@@ -1242,9 +1174,8 @@ if (!Math.sign) {
 				segment = node.length;
 			} 
 			else {
-				// Must be a non-negative integer in base-10 without leading zeros
-				if (!segment.match(/^0|[1-9][0-9]*$/)) {
-					throw new RangeError('Cannot add a named property to an array!');
+				if (!segment.match(/^0$|^[1-9][0-9]*$/)) {
+					throw new RangeError('Invalid array index: ' + segment);
 				}
 				segment = parseInt(segment,10);
 			}
@@ -1382,7 +1313,7 @@ if (!Math.sign) {
 		}
 		this._action(doc, function (node, lastSegment) {
 			if (!Object.hasOwnProperty.call(node,lastSegment)) {
-				throw new PatchApplyError('Path not found in document: ' + lastSegment);
+				throw new PatchApplyError('Path not found in document');
 			}
 			value = node[lastSegment];
 			return node;
@@ -1468,10 +1399,9 @@ if (!Math.sign) {
 		}
 
 		required = _operationRequired[operation.op];
-
 		// Check that all required keys are present
 		for(i = 0; i < required.length; i++) {
-			if(!(required[i] in operation)) {
+			if(operation[required[i]] === undefined) {
 				throw new InvalidPatch(operation.op + ' must have key ' + required[i]);
 			}
 		}
@@ -1548,7 +1478,7 @@ if (!Math.sign) {
 }));
 //Copyright (c) 2016 Kris Nye - MIT License
 function isObject(a) {
-	let type = typeof a;
+	var type = typeof a;
 	return a != null && (type === 'object' || type == 'function')
 }
 //Copyright (c) 2016 Kris Nye - MIT License
@@ -1681,15 +1611,12 @@ function ingestLiterals(valueString,option,$)
 
 
 
-	//the seed object {}
-	//the newline delimited statements
 		
 	//turn into array
 	var literalStrings = valueString.split('\n')
 	
 	//ingest the JSON Path Literals without using eval()
 	//get back object representation of literals
-	//upstream require data
 	try { var literalObjects = objectifyExpressions(literalStrings) } catch(e){throw new Error(e)}		
 
 
@@ -1718,7 +1645,6 @@ function ingestLiterals(valueString,option,$)
 			//trace/walk the path
 			//within the object we should determine if data exists
 			for(var j=0; j < thisPath.length; j++){
-				//what if blank?
 				
 				//if we have a path longer than 0 and we are not defined fix it unless -I inhibit
 				if($ === undefined && !option.I){
@@ -1743,7 +1669,7 @@ function ingestLiterals(valueString,option,$)
 				}
 
 
-				//are we undefined? only gripe if -I
+				//are we undefined? only complain if -I
 				if (thisNode === undefined && option.I){
 					throw new Error("Object literals lack proper initialization, -I is inhibiting inferred path generation")
 				}
@@ -1866,9 +1792,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 				try { valueArg = readFile(valueArg) } catch(error) { throw new Error(error) };
 			}
 
-			//treat contents of valueArg as String if -s specified
-
-			//treat value as a String always, escape all special characters
+			//treat contents of valueArg as String if -s specified, escape all special characters
 			if(option.s) { 
 				valueArg = '"' + valueArg.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f-\uFFFF]/g, function(chr) { return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4) })+'"' 
 			} 
@@ -2087,13 +2011,16 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 			var opArray = JSON.parse(readFile(JSONPatchArg))
 		}
 		//build as many opArray entries as there are validated path args
-		else {
+		else if (pathArgValidated.length){
 			var opArray=[{}]
 			//make opArray
 			for(i=0; i < pathArgValidated.length; i++){
 				opArray[i]={'op':opArg,'path':pathArgValidated[i],'from':fromArgValidated,'value':valueArg}
 			}		
-		}		
+		}
+		else {
+			throw new Error("JSON Patch operation with no path provided!")
+		}
 		//try and apply the patch, throwing an error otherwise
 		try { obj = jsonpatch.apply_patch(obj,opArray) } catch(e){throw new Error(e)}
 	}
@@ -2145,10 +2072,6 @@ option.spaceArg = spaceArg
 if((option.v || option.V)){ var valueArg = decodeURIComponent(escape(arguments[4])) }
 else { var valueArg = undefined  }
 
-//printErr("dataArg: " + dataArg)
-
-//for (i=0; i<dataArg.length; i++) { printErr("dataArg " + i + ": " + dataArg.charAt(i) + " (" + dataArg.charCodeAt(i) + ")") }
-
 //set the Path 
 if (option.p) { var pathArg = decodeURIComponent(escape(arguments[5])) }
 
@@ -2196,7 +2119,6 @@ else {
 	//readline will take in UTF-8 but pass to JS as if it was UTF-16, escape strips the leading 00 for decoding
 	while ( line = decodeURIComponent(escape(this.readline())) ) { fileText += line + '\n'; }	
 };
-
 
 //JS Literals
 if(!(option.S || option.s) && /^\s*\$/.test(fileText)){ 
@@ -2438,7 +2360,8 @@ if [ "${readFileSupport}" = "false" ]; then
 	{ errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}" <<< "$(sed '/^$/d' "${fileArg:-/dev/stdin}")" ; } 1>&3 ; } 2>&1); } 3>&1
 #file or file redirection
 elif [ -f "${fileArg:=/dev/stdin}" ]; then
-	{ errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "${fileArg}" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}"; } 1>&3 ; } 2>&1); } 3>&1
+#	{ errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "${fileArg}" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}"; } 1>&3 ; } 2>&1); } 3>&1
+"${jsc}" -e "${JSCode}" -- "${queryArg}" "${fileArg}" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}"
 #pipe in
 else
 	#just cat
