@@ -13,9 +13,10 @@ jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Comming
 ]
 ```
 
-## Help File
+## Help File (-h)
 ```
 jpt - JSONPath Tool (https://github.com/brunerd/jpt)
+
 Usage:
 jpt [options] [<query>] [<file>]
 
@@ -41,7 +42,7 @@ JSON Output Options:
 	-u Escape all string characters above 0x7F as UTF-16 surrogate pairs \u
 	-a Always return an array, inhibit reduction of single element arrays, will return [] for nothing
 	-F Flatten arrays if possible
-	-N Nesting reduction, enclosing arrays will be removed stoppping when array length is greater than 1 or is an object
+	-N Nesting reduction, enclosing arrays will be removed stoppping when length > 1
 
 Alternate Output Modes:
 	-l output the length of the array, number of keys in an object, or length of string
@@ -83,20 +84,20 @@ Alternate Output Modes:
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
 
 		-E "<value>" encoding options for -T output:
-		  Encoding for character values above 0x007F:
+		  Encoding for character values above 0x007F (by default):
 			x hexadecimal value (UTF-8) with \x escapes 
-			0 octal value (UTF-8) in \0 octal escapes
+			O octal value (UTF-8), with \nnn octal escapes (shell style)
+			0 octal value (UTF-8) with \0nnn octal escapes (zsh style)
 			u Unicode value (UTF-16) with \u escapes
 			U Unicode Code Point with \U zsh escapes
 			E Unicode Code Point with \u{} ES2016 style escapes
 			% URI encoded with %, JSON Pointer paths are URI encoded
 
-			-A encode All characters (0x0000-0xFFFF)
+			-A encodes all characters (0x0000-0xFFFF)
 		
-		  Encoding for all characters:
+		  Encoding for all characters by default:
 			h hexadecimal value (UTF-8), raw, lowercase
 			H hexadecimal value (UTF-8), raw, uppercase
-			O octal value (UTF-8), raw
 			o octal value (UTF-8) with ES2015 octal prefix "0o"
 			6 binary value (UTF-16), 16 bits (all)
 			B binary value (UTF-16), 8 bit wide (all)
@@ -179,7 +180,6 @@ JSON Pointer
 	/1 - property named key in an object or a numeric object name in a key
 	/- references the end of an array, where the next value goes
 	A literal / must be escaped with ~0 and a literal ~ must be escaped with ~1
-
 ```
 
 ### Requirements:
