@@ -32,10 +32,10 @@ Options:
 
 Processing Options:
 	-S Input (file or stdin) as a JSON string
-	-I Inhibit path inference for JSON Path Object Literals lacking hierarchical initializers
-	-G "Gripe" mode, gripes about more things. Importing Object Literals, JSON Path during JSON Patch ops
+	-I Inhibit path inference for JSON Path Object Literals lacking array and object initializers
+	-G "Gripe" mode, gripes about more things, mainly importing Object Literals and non-existant JSONPaths and JSON Patch ops
 	-k Disallow processing JSON Object Literals (by default it does) (see -L for outputting JSOL)
-	-g Use null for values when path-only JSON Object literals are ingested
+	-g Use null for values when path-only JSON Object literals are ingested 
 
 JSON Output Options:
 	-i "<value>"  Indent per-level spaces (0-10) or a character string for the value
@@ -45,7 +45,7 @@ JSON Output Options:
 	-N Nesting reduction, enclosing arrays will be removed stoppping when length > 1
 
 Alternate Output Modes:
-	-l output the length of the array, number of keys in an object, or length of string
+	-l output the length of the array, number of properties in an object, or length of string
 
 	-j JSONPath path(s) matched by the query results
 	-J JSONPath path(s) of the object returned by the query
@@ -56,29 +56,29 @@ Alternate Output Modes:
 
 	  -J and -R options:
 	  	-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)
-	    -K key name only (no preceding path)
+	    -K key/property name only (no preceding path)
 		  -i "<value>" indent spaces (0-10) or character string for each level of indent
 
 	-L output JSON Path Object Literal notation of the resulting object
 		Format: <JSON Path>=<value>
 				<JSON Path> is simply Javascript expression syntax with $ as the object name
 					Example: $.key, $["key"], $['key'], or $[0] 
-				<value> is any valid JSON valid and ALSO single quoted strings
+				<value> is any valid JSON valid plus single quoted strings
 					Example: 'string', "string", [], {}, 42, true, false, null
 
 	-L, -J, and -R options:
 		-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects
 		-Z "<int>" Depth
-			Combined with -L it will coalesce lower depth levels into a compound JSON object/array
+			Combined with -L it will coalesce lower depth levels into a compound JSON object/array statement
 			Combined with -P, -J or -R will return only purely primitive nodes at or below the Z level
 
 	JSON Path output options for -L -J and -j:
 		-d Use dot notation rather than bracket notation, when possible
-		-q Use single quotes for bracketed key names
-		-Q Use single quotes for both bracketed key names and string values (-L only)
+		-q Use single quotes for bracketed property names
+		-Q Use single quotes for both bracketed property names and string values (-L only)
 
 
-	-T output resulting data as Text aka "Trampling" by omitting all structures and key names
+	-T output resulting data as Text aka "Trampling" by omitting all structures and property names
 		-e Print escaped characters literally: \b \f \n \r \t \\
 		-n Print null values as the string 'null'
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
@@ -119,9 +119,9 @@ Data Alteration:
 
 		Operation (-o):
 			-o "add" -p <path> -v <value>
-				add value to new array indicia or new object key (RFC7396)
+				add or replace value of an object property or add/insert array index (RFC7396)
 			-o "replace" -p <path> -v <value>
-				replace value of object key or array indicia (RFC6902)
+				replace value of existing object key or array index (RFC6902)
 			-o "move" -f <from> -p <path>
 				move a path to a new or existing path/node(RFC6902)
 			-o "copy" -f <from> -p <path>
@@ -139,8 +139,6 @@ Data Alteration:
 				
 		Path (-p):
 			-p <path> the target path in JSON Pointer or JSON Path
-				-g Gracefully (silently) ignore any and all non-existant JSONPath paths 
-				   (non-existant JSON Pointers still fail for test, remove and replace as per spec)
 
 		From (-f):
 			-f <path> the "from" path (JSON Pointer or Path) for copy and move operations
@@ -150,36 +148,39 @@ Data Alteration:
 			-V <filespec to JSON value> a file to use for the contents of value
 				-s treat input from -v or -V as a string
 				
-Behavioral Notes:
+Notes:
 	JSON is the default output mode, to change see Alternate Output Modes.
 	Single item arrays will be reduced to a single primitive JSON object (-a to inhibit)
-	File/stream input accepts both JSON and JSON Path Object Literal 
+	File/stream input accepts both JSON and JSON Path Object Literal (-k to inhibit literal intake)
 
 JSON Path Primer
-	$ - root of the JSON data, ALL JSONPath QUERIES MUST BEGIN WITH $
+	$ - the root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $
 	.key - is the "child" operator for a property named 'key' in a JSON object
 	..key - is a recursive operator that will find all properties name 'key' in the object
 	['key] or ["key"] - quoted keys can accomodate any name, \u Unicode escaping will be processed
 		.. may precede a bracket, otherwise put them next to each other with no spaces, no dots
 	.* ..* or [*] - the values of all the keys within an object or indices in an array
-	[start:stop:step] - slice, behavior like Python, accepts integers (pos or neg), script expressions, or empty
+	[start:stop:step] - slice, behavior like Python, accepts integers (pos or neg),script and slice expressions, or empty
 	[?(@.subKey == "This One!")] - filter expression substitute @ with the current object level
 		  Comparison operators: can be ==, != and also regex =~ /string/ 
 	[(@.length/2)] - script expression returns value, good for arrays. Works in slices.
-	[-] - for data alteration ops, used to add to the end of an array
-	[1] - and array index, use any integers
+	[-] - for data alteration ops, used to add to the end of an array, borrowed from JSON Pointer
+	[1] - an array index, integers only, cannot reference an numeric property name
 	["a","b"] - a comma separated union can collect the values of multiple properties at the same level in an object
-		 You can use: quoted key names, numbers, star, filter and script expressions
+		 Unions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices
 
-	Horrible example: $["wow"].this['is'][1][?(@.ugly == "query")]
+	Horrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]
 
-JSON Pointer
-	"" - an empty string mean root
-	/ - means the root with a key name "" (JSON Path: $[""])
-	/key - property named key in an object
-	/1 - property named key in an object or a numeric object name in a key
-	/- references the end of an array, where the next value goes
-	A literal / must be escaped with ~0 and a literal ~ must be escaped with ~1
+JSON Pointer Primer
+	""		an empty string represents the JSON document
+	/		is the root or next child node with a property named "" an empty string (JSONPath $[""])
+	/key		property named key in an object
+	/1		property named 1 in an object or a numeric index in an array
+	/-		references the end of an array, where the next value goes (always non-existant in queries)
+	~ in a property name must be escaped as ~0
+	/ in a property name must be escaped as ~1
+
+
 ```
 
 ### Requirements:
