@@ -9,7 +9,7 @@
 function jpt #([options] [query] [fileArg])
 {
 : <<-LICENSE_BLOCK
-jpt - JSONPath Tool (for more info: https://github.com/brunerd/jpt)
+jpt - JSON Power Tool (for more info: https://github.com/brunerd/jpt)
 Copyright (c) 2020 Joel Bruner
 Other portions: Copyright (c) 2007 Stefan Goessner (goessner.net), Copyright (c) 2020 "jpaquit" (https://github.com/jpaquit), Copyright (c) 2016 Kris Nye, Copyright (c) 2012 Dharmafly
 Licensed under the MIT License
