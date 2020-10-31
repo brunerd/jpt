@@ -122,6 +122,8 @@ Data Alteration:
 				add or replace value of an object property or add/insert array index (RFC7396)
 			-o "replace" -p <path> -v <value>
 				replace value of existing object key or array index (RFC6902)
+			-o "remove" -p <path>
+				remove specified path from the document (RFC6902)
 			-o "move" -f <from> -p <path>
 				move a path to a new or existing path/node(RFC6902)
 			-o "copy" -f <from> -p <path>
@@ -185,6 +187,6 @@ JSON Pointer Primer
 
 ### Requirements:
 bash or zsh
-macOS 10.4-present
+macOS 10.4+
 Linux with jsc installed
 Windows with Linux subsystem and jsc
