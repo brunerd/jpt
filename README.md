@@ -34,7 +34,7 @@ Processing Options:
 	-S Input (file or stdin) as a JSON string
 	-I Inhibit path inference for JSON Path Object Literals lacking array and object initializers
 	-G "Gripe" mode, gripes about more things, mainly importing Object Literals and non-existant JSONPaths and JSON Patch ops
-	-k Disallow processing JSON Object Literals (by default it does) (see -L for outputting JSOL)
+	-k Disallow processing JSONPath Object Literals (by default it does) (see -L for outputting JSOL)
 	-g Use null for values when path-only JSON Object literals are ingested 
 
 JSON Output Options:
@@ -42,7 +42,7 @@ JSON Output Options:
 	-u Escape all string characters above 0x7F as UTF-16 surrogate pairs \u
 	-a Always return an array, inhibit reduction of single element arrays, will return [] for nothing
 	-F Flatten arrays if possible
-	-N Nesting reduction, enclosing arrays will be removed stoppping when length > 1
+	-N Nesting reduction, enclosing arrays will be removed, stopping if array length > 1
 
 Alternate Output Modes:
 	-l output the length of the array, number of properties in an object, or length of string
