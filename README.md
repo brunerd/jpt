@@ -1,10 +1,18 @@
 # jpt
 JSON Power Tool: Retrieve and manipulate JSON data using [JSONPath](https://github.com/brunerd/jsonpath), [JSON Pointer](https://tools.ietf.org/html/rfc6901), [JSON Patch](http://tools.ietf.org/html/rfc6902), and [JSON Merge Patch](https://tools.ietf.org/html/rfc7386)
 
-Written in Javascript ES5 and wrapped in a bit of shell, the function can be used in bash/zsh, and requires jsc to be installed which is de facto on macOS since 10.4, CentOS and Ubuntu also.
+Written mostly in Javascript (ES5) and wrapped in a bit of shell, it can be used standalone or embedded in your bash/zsh scripts, requiring only `jsc` which has been standard on Macs since 10.4 and is widely available for Linux and even Windows with Linux subsystem installed.  
+
+It is a non-compiled script, so it can be easily studied, maintained, or modified. It avoids the need for code-signing and notarization on the Mac platform.  
 
 ## Examples
+[JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a single property only
+```
+jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Comming Soon","excited":"I can\'t wait!"}}}'
+"I can't wait!" 
+```
 
+[JSONPath](https://github.com/brunerd/jsonpath) is not a standard (but hey, neither is [jq](https://github.com/stedolan/jq)!) it has a richly expressive query syntax that can do things JSON Pointer can't do.
 ```
 jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Comming Soon","excited":"I can\'t wait!"}}}' 
 [
