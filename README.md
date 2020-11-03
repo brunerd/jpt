@@ -5,6 +5,8 @@ Written mostly in Javascript (ES5) and wrapped in a bit of shell, it can be used
 
 It is a non-compiled script, so it can be easily studied, maintained, or modified. It avoids the need for code-signing and notarization on the Mac platform.  
 
+See my blog for articles, examples, and musing on the jpt: https://www.brunerd.com/blog/category/projects/jpt/
+
 ## Examples
 [JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a single property only
 ```
