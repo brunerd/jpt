@@ -5,7 +5,7 @@
 # FUNCTIONS #
 #############
 
-#v0.9.4d
+#v0.9.5
 function jpt #([options] [query] [fileArg])
 {
 : <<-LICENSE_BLOCK
@@ -25,7 +25,7 @@ read -r -d '' JSCode <<-'EOF'
 //FUNCTIONS//
 //*********//
 
-//brunerd JSONPath 0.9.12b (slim normalize)- XPath for JSON
+//brunerd JSONPath 0.9.13 (slim normalize)- XPath for JSON
 function jsonPath(obj, expr, arg) {
 	var P = {
 		resultType: arg && arg.resultType || "VALUE",
@@ -78,7 +78,7 @@ function jsonPath(obj, expr, arg) {
 				var x = expr.slice()
 				var loc = x.shift();
 
-				if(val !== null && Array.isArray(val) && loc.constructor === String && loc.match(/^0/)){
+				if(val !== null && Array.isArray(val) && loc.constructor === String && loc.match(/^0/) && loc !== "0"){
 					throw new Error("Property name '"+ loc +"' is a string with leading zeros and target is an array!")
 				}
 				else if(val !== null && val.constructor === Object && loc.constructor === Number){
@@ -299,6 +299,8 @@ function jscChunkPrint(resultText)
 //Based on: https://davidwells.io/snippets/traverse-object-unknown-size-javascript
 function renderObject(obj,pathName,option,level) {
 	
+	//cdebug("arguments: " + JSON.stringify(arguments,null,2))
+	//cdebug("renderObject:\n" + "obj: "+ JSON.stringify(obj,null,2) +"\npathName: " + pathName + "\noption: " + JSON.stringify(option,null,0) + "\nlevel: " + level)
 	
 	option = option || {}
 	option.maxDepth = (option.maxDepth === undefined || option.maxDepth < -1 ) ? -1 : option.maxDepth
@@ -311,22 +313,27 @@ function renderObject(obj,pathName,option,level) {
 	
 	//we need this in two places
  	const makeIndent = function(spaceArg,level) {
+ 		//cdebug("spaceArg: '" + spaceArg +"', level: " + level )
  		
 		var indentComp = '';
 		//create the string component for each indent level
 		if (spaceArg.constructor === Number)  { for(i=0;i<spaceArg;i++){ indentComp+=" " } }
 		else { indentComp=spaceArg }
 		
+		//cdebug("indentComp: '" + indentComp + "'")
 		
 		//create the final indent string
 		for(i=0;i < level; i++) { indent+=indentComp }
 		
+		//cdebug("Final Indent: '" + indent + "'\n")
 		return indent;
  	}
 	
 	//keep track of our depth level
 	if (isNaN(level)) {var level=0} else {level++}
 	
+	//cdebug("pathName: " + pathName)
+	//cdebug("level: " + level)
 
 	//-K or only for -P and -J
 	if(option.K && !(option.J || option.R)) {option.K=false}
@@ -344,6 +351,7 @@ function renderObject(obj,pathName,option,level) {
 	
 	//ARRAY
 	if (obj.constructor === Array) {
+		//cdebug("renderObject: obj.constructor === Array")
 		if ((option.J || (option.R)) && !option.P && (pathName || pathName === "")) { 
 			result.push(indent + pathName + (option.C ? ": Array" : '' )) 
 		}
@@ -367,10 +375,14 @@ function renderObject(obj,pathName,option,level) {
 		}
 		//if -L initialize the object
 		else if((pathName || pathName === "") && !option.P){
+			//cdebug("renderObject, //OBJECT, init")
+			//cdebug("level: " + level)
+			//cdebug("option.maxDepth: " + option.maxDepth)
 			result.push(indent + pathName + (option.K ? (!option.C ? '' : typeString ) : level === option.maxDepth ? '=' + JSON.stringify(obj,null,0) : '={}' ))
 		}
 
 		if(option.maxDepth === -1 || level < option.maxDepth) {
+			//cdebug("renderObject, //OBJECT, walk")
 			for (var key in obj) {
 				if (obj.hasOwnProperty(key)) {				
 					//-P -K -J
@@ -398,8 +410,10 @@ function renderObject(obj,pathName,option,level) {
 	else {		
 		//-T
 		if(option.T) {
+			//cdebug("-T Text processing")
 			//put result in an array escape whitespace chars, if -e is on escape here (we can't do it later because of indents)
 			if (typeof obj === "string"){
+				//cdebug("String")
 				//-e escape whitespace
 				if(option.e){
 					//escape all whitespace with literal strings
@@ -433,6 +447,8 @@ function renderObject(obj,pathName,option,level) {
 						var charcode = obj.charCodeAt(i);
 						
 						if (charcode < 0x80) {
+							//cdebug("charcode: " + charcode)
+							//cdebug("charcode.toString("+ stringBase +"): " + charcode.toString(stringBase))
 							if(option.encoding.b) { 
 								tempArray.push(("0000000" + charcode.toString(2)).slice(-8), " ") 
 							}
@@ -472,6 +488,7 @@ function renderObject(obj,pathName,option,level) {
 							);
 						}
 					}
+					//cdebug("tempArray:\n" + JSON.stringify(tempArray,null,2))
 
 					obj=tempArray.join("");
 					if(option.encoding.H){ obj=obj.toUpperCase() }
@@ -534,6 +551,7 @@ function renderObject(obj,pathName,option,level) {
 				}
 			}
 			else if(obj.constructor === Number){
+				//cdebug("Number")
 				if(option.encoding.b || option.encoding.B || option.encoding['6']) {
 					//b and B are the same 8 bit wide, 6 will need 16 bit wide
 					obj = obj.toString(2)
@@ -563,6 +581,7 @@ function renderObject(obj,pathName,option,level) {
 				obj = obj ? "1" : "0"
 			}
 			result=[ indent + obj ]
+			//cdebug("result: " + result)
 		}
 		//if -P or -J
 		else if( (option.R || option.J) ) { 
@@ -573,11 +592,14 @@ function renderObject(obj,pathName,option,level) {
 		else {			
 			if (typeof obj === "string" && !isNull) {
 				//escape whitespace
+				//cdebug("obj: " + JSON.stringify(obj,null,2))
 				var thisString = obj.replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u001f\u007f]/g, function(chr) {return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4)})
+				//cdebug("thisString: " + JSON.stringify(thisString,null,2))
 
 				//put string in ' (default) or " quotes, escaping quotes in string as appropriate
 				var thisString=(stringQuotes === "'" ? thisString.replace(/'/g,"\\'") : thisString.replace(/"/g,'\\"'))
 
+				//cdebug("thisString: " + JSON.stringify(thisString,null,2))
 				result=[ pathName + '=' + stringQuotes + thisString + stringQuotes ]
 			}
 			//booleans and numbers don't get quotes, nor does a string with isNull set
@@ -596,6 +618,9 @@ function objectifyExpressions(array,option)
 	//option.expandTrailingUnion = expand a union expression as discreet lines
 	//option.disallowData - error if data is found along with path expression
 
+	cdebug("objectifyExpressions()")
+	//cdebug("option:\n" + JSON.stringify(option,null,2))
+	cdebug("array:\n" + JSON.stringify(array,null,2))
 	
 	try {
 		//go through the array of literals, remove any empty lines
@@ -603,15 +628,19 @@ function objectifyExpressions(array,option)
 				var pathStack=[]
 				var baldRecursion=false				
 		
+				//cdebug("expr (raw): " + expr)
+				//cdebug("expr.length: " + expr.length)
 				
 				//trim any leading/trailing whitespace
 				expr=expr.replace(/^\s*/,"").replace(/\s*$/,"")
+				cdebug("!expr: " + JSON.stringify(expr) )
 				
 				//if empty string or begins with / parse as JSON Pointer
 				if((expr === "" || expr[0] === "/") ){
 					var assignmentLocations=[]
 					option.allowExpressions=false
 					
+					cdebug("JSON Pointer: " + expr)
 					//split into array
 					pathStack = expr.split('/')
 					//throw out first entry
@@ -620,15 +649,18 @@ function objectifyExpressions(array,option)
 					pathStack = pathStack.map(function (f){ 
 						return f.replace(/~1/g,"/").replace(/~0/g,"~") })
 					if(pathStack[pathStack.length-1] === "-"){ pathStack[pathStack.length-1] = {"expression":"-"} }
+					cdebug("pathStack:\n" + JSON.stringify(pathStack,null,2))
 				}
 				//if $ then process as JSONPath
 				else if(expr[0] === "$"){
 					//reverse expr to use regex negative lookahead to ignore
 					var revExpr = expr.split('').reverse().join('')
+					//cdebug("revExpr : " + revExpr)
 
 					// replace everything in quotes "..." '...' and regexes =~ /.../ with spaces
 					// replace assignment operators with spaces with spaces: == === != !== <= >= =~
 					var tempExpr=revExpr.replace(/(["'])(.*?)\1(?!\\)|(\/.*?\/(?!\\)\s*~=)|=~*\s(\/.*?\/(?!\\))|(={2,3})[^=]|[^=](==?!)|[^=]((?:=!|=<|=>|~=))/g, function(a){return a.replace(/./g, " ")})
+					//cdebug("tempExpr: " + tempExpr)
 
 					var assignmentRegex=/=/g
 					var assignmentLocations=[]
@@ -639,6 +671,7 @@ function objectifyExpressions(array,option)
 					do{
 						assignmentMatch=assignmentRegex.exec(tempExpr)
 
+						//cdebug("assignmentRegex.lastIndex:\n" + assignmentRegex.lastIndex);
 
 						//break if stuck or not found
 						if (assignmentMatch === null || assignmentRegex.lastIndex === 0|| lastAssignmentLastIndex === assignmentRegex.lastIndex) { break }
@@ -649,6 +682,8 @@ function objectifyExpressions(array,option)
 
 					}while(assignmentRegex.lastIndex !== 0 && assignmentRegex.lastIndex !== tempExpr.length)
 
+					//cdebug("assignmentLocations: " + JSON.stringify(assignmentLocations,null,2))				
+					//cdebug("assignmentLocations.length: " + assignmentLocations.length)
 					
 					//throw an error if we are NOT allowing JSON Path object literals and we get something
 					if(option.disallowData && assignmentLocations.length){
@@ -662,8 +697,10 @@ function objectifyExpressions(array,option)
 
 					//trim expr to ONLY have path and reverse it to be revExpr
 					if(expr.length - lastAssignmentLastIndex > 0){
+						//cdebug("expr (pre-trim): " + expr)
 						//expr = expr.substring(0,expr.length - lastAssignmentLastIndex).split('').reverse().join('')
 						var revExpr = expr.substring(0,expr.length - lastAssignmentLastIndex).split('').reverse().join('')
+						cdebug("revExpr (expr trimmed): " + revExpr)
 					}
 					//this may never be reachable
 					else{
@@ -950,20 +987,26 @@ function objectifyExpressions(array,option)
 					throw new SyntaxError("Unrecognized query syntax: " + expr)
 				}
 												
+				//cdebug("pathStack:\n" + JSON.stringify(pathStack,null,2))
+				//cdebug("pathStack.length: " + pathStack.length)
 				
 				//now that we know our path context...
 				
 				//OK if only one =, if so create assignmentData, assignmentData_obj
 				if (assignmentLocations.length === 1){
+					//cdebug("assignmentLocation (reversed): " + (expr.length - lastAssignmentLastIndex+1))
+					//cdebug("prev char: " + expr.charAt(expr.length - lastAssignmentLastIndex-1))
 
 					//catch special case if odd numbered === assignment operator used, skip it, == will fail too
 					if(expr.charAt(expr.length - lastAssignmentLastIndex-1) === "="){ return ''}
 
 					//get the string representation, we will attempt to parse it later...
 					var assignmentData = expr.substring(expr.length - lastAssignmentLastIndex + 1, expr.length)
+					//cdebug("assignmentData: " + assignmentData)
 
 					//detect single quotes ' and change to " escaping if necessary, to parse as JSON string
 					if(assignmentData.match(/^'(.*)'$/)){
+						//cdebug("'single quote match'")
 						//turn into JSON string object
 						//remove them, un-escape all single and double quotes (to be sure)
 						//escape single quotes, wrap in double quotes
@@ -980,25 +1023,36 @@ function objectifyExpressions(array,option)
 					}
 				}
 					
+				//cdebug("assignmentData: " + assignmentData)
 				
 				//return the pathStack object not a re-stringified version
 				//if we have a pathStack, it's last member is an array and the option to expand it is on
 				if(pathStack.length && pathStack[pathStack.length-1].constructor === Array && option.expandTrailingUnion){
+					//cdebug("expandTrailingUnion")
 					var returnObject=[]
 					var basePath=pathStack.slice()
+					//cdebug("basePath: " + JSON.stringify(basePath,null,0))
 					var childUnion=basePath.pop()
+					//cdebug("basePath: " + JSON.stringify(basePath,null,0))
+					//cdebug("childUnion: " + JSON.stringify(childUnion,null,0))
 					
 					for(var i=0; i<childUnion.length; i++){
 						var thisChild=childUnion[i]
+						//cdebug("thisChild: " + JSON.stringify(thisChild,null,0))
 						var tempBasePath=basePath.slice()
+						//cdebug("tempBasePath: " + JSON.stringify(tempBasePath,null,0))
 						tempBasePath.push(thisChild)
 						returnObject.push({"path":tempBasePath,"data":assignmentData_obj})
+						//cdebug("returnObject (loop): " + JSON.stringify(returnObject,null,2))
 					}
+					//cdebug("returnObject: " + JSON.stringify(returnObject,null,2))
 					return returnObject
 				}
 				else {
+					//cdebug("pathStack (return): " + JSON.stringify(pathStack))
 					//return pathStack
 					var returnObject={"path":pathStack,"data":assignmentData_obj}
+					//cdebug("returnObject: " + JSON.stringify(returnObject,2,null))
 					return returnObject
 				}
 
@@ -1595,15 +1649,21 @@ function ingestLiterals(valueString,option,$)
 	}
 
 
+	cdebug("ingestLiterals()")
 
+	//cdebug("$:\n" + JSON.stringify($,null,0))
+	//cdebug("valueString: " + JSON.stringify(valueString,null,2))
 		
 	//turn into array
 	var literalStrings = valueString.split('\n')
+	cdebug("literalStrings raw:\n" + JSON.stringify(literalStrings,null,2))
 	
 	//ingest the JSON Path Literals without using eval()
 	//get back object representation of literals
 	try { var literalObjects = objectifyExpressions(literalStrings) } catch(e){throw new Error(e)}		
 
+	//cdebug("literalObjects (1line):\n" + JSON.stringify(literalObjects,null,0))
+	//cdebug("literalObjects:\n" + JSON.stringify(literalObjects,null,2))
 
 	//sort the objects by path lengths, then reverse so we are DEEPEST to shallowest
 	//we will infer from end backward, this allows us the easily ignore paths without data since they will be LOWER on the list
@@ -1613,6 +1673,7 @@ function ingestLiterals(valueString,option,$)
 		literalObjects = literalObjects.reverse()
 	}
 	
+	cdebug("literalObjects (sorted):\n" + JSON.stringify(literalObjects,null,2))
 		
 	//get back an array of objects containing keys "path" and (perhaps) "data"
 	//path is an array of String or Number elements
@@ -1624,30 +1685,43 @@ function ingestLiterals(valueString,option,$)
 		
 		var thisNode=$
 		
+		//cdebug("thisNode: " + JSON.stringify(thisNode))
+		cdebug("thisPath: " + JSON.stringify(thisPath))
+		cdebug("thisPath.length: " + thisPath.length)
+		cdebug("thisLitObj:\n" + JSON.stringify(thisLitObj,null,2))
 		
+		//cdebug("thisLitObj.data: " + JSON.stringify(thisLitObj.data))
 
 		if(thisPath.length>0){
+			//cdebug("thisPath.length>0")
 			//trace/walk the path
 			//within the object we should determine if data exists
 			for(var j=0; j < thisPath.length; j++){
+				//cdebug("thisPath.length < j: " + j)
 				
 				//if we have a path longer than 0 and we are not defined fix it unless -I inhibit
 				if($ === undefined && !option.I){
+					cdebug("$ is undefined")
+					cdebug("Inferring by type...")
 					//get element name type
 					//if it is a string make this an object
 					if(thisPath[j].constructor === String){
+						cdebug(thisPath[j] + " is a String, creating Object" )
 						//create it
 						$={}
 					}
 					//if it is numeric, make this an array
 					else if(thisPath[j].constructor === Number){
+						cdebug(thisPath[j] + " is a Number, creating Array" )
 						//create it
 						$=[]
 					}
 					thisNode=$
+					//cdebug("$ (after): " + JSON.stringify($))
 				}
 
 				var thisKeyName=thisPath[j]
+				cdebug("thisKeyName: " + JSON.stringify(thisKeyName,null,0))
 
 				if (option.G && thisLitObj.data === undefined){
 					throw new Error("Gripe Mode: No data for path ending in: " + thisKeyName )
@@ -1660,11 +1734,15 @@ function ingestLiterals(valueString,option,$)
 				}
 				//the node specified does not currently exist
 				else if (!thisNode.hasOwnProperty(thisKeyName)){
+					cdebug("node does not exist: " + thisKeyName)
 					//if we are at the end
 					if (j === thisPath.length - 1){
+						cdebug("at end")
 						if(thisNode.constructor === Array || thisNode.constructor === Object){
 							
 							if(thisLitObj.data !== undefined){
+								cdebug("Creating key '" + thisKeyName + "' with value: " + JSON.stringify(thisLitObj.data))
+								cdebug("thisNode: " + JSON.stringify(thisNode))
 								//you can never make a named entry in an array
 								if(thisNode.constructor === Array && thisKeyName.constructor === String){
 									throw new Error("Unable to create key name '" + thisKeyName + "' in the array: " + JSON.stringify(thisNode,null,0) )
@@ -1683,6 +1761,7 @@ function ingestLiterals(valueString,option,$)
 						}
 						else{
 							if(option.g){ 
+								cdebug("Skipping " + thisKeyName)
 								continue; 
 							}
 							else {
@@ -1692,6 +1771,7 @@ function ingestLiterals(valueString,option,$)
 					}
 					//if  we are not at the end and we have option -I
 					else if(!option.I && j !== thisPath.length-1){
+						cdebug("not at end")
 						//get NEXT element type
 						//if it is a string make this an object
 						if(thisPath[j+1].constructor === String){
@@ -1702,6 +1782,7 @@ function ingestLiterals(valueString,option,$)
 								throw new Error("Gripe Mode: Unable to create inferred array index " +thisKeyName+ " in an object!")
 							}
 							//create it
+							cdebug(thisPath[j+1] + " is a String, creating named Object!" )
 							thisNode[thisKeyName]={}
 						}
 						//if it is numeric, make this an array
@@ -1713,10 +1794,12 @@ function ingestLiterals(valueString,option,$)
 								throw new Error("Gripe Mode: Unable to create inferred array index " +thisKeyName+ " in an object!!")
 							}
 
+							cdebug(thisPath[j+1] + " is a Number, creating Array!" )
 							//create it
 							thisNode[thisKeyName]=[]
 						}
 						//descend into it
+						cdebug("Descending down into " + thisKeyName)
 						thisNode=thisNode[thisKeyName]
 					} 
 					//we are not at the end and option.I was not around
@@ -1726,20 +1809,25 @@ function ingestLiterals(valueString,option,$)
 				}
 				//the node exists but we are not at the end
 				else if(j !== thisPath.length - 1){
+					cdebug("Descend to: " + thisKeyName)
 					thisNode = thisNode[thisKeyName]
 				}
 				//else it exists and we are at the end of our specified
 				else {
 					if (thisLitObj.data !== undefined){
 						var thisLitObjDataString=JSON.stringify(thisLitObj.data,null,0)
+						cdebug("thisLitObjDataString: " + thisLitObjDataString)
 						
 						if( option.G && (thisLitObjDataString === "{}" || thisLitObjDataString == "[]") ){ 
+							cdebug("Assign node '" + thisKeyName + "' the value: " + JSON.stringify(thisLitObj.data,null,0))
 							thisNode[thisKeyName]=thisLitObj.data 
 						}
 						else{
+							cdebug("Ignoring array or object initializer, it should have auto-inferred")
 						}
 					}
 					else {
+						cdebug("Node '" + thisKeyName + "' exists but No data provided, skipping")
 					}
 				}
 			}
@@ -1749,8 +1837,12 @@ function ingestLiterals(valueString,option,$)
 			throw new Error("Unable to assign value to path /" + thisPath.map(function(p){ return p.replace(/~/g,"~0").replace(/\//g,"~1")}).join('/') + " because the object is undefined")
 		}
 		else if(!thisPath.length && $ === undefined && thisLitObj.data) {		
+			cdebug("Assigning $: " + JSON.stringify(thisLitObj.data))	
 			$=thisLitObj.data
+			//cdebug("$ (after): " + JSON.stringify($))
 		}			
+		//cdebug("$ so far:\n" + JSON.stringify($,null,2))
+		//cdebug("thisNode so far:\n" + JSON.stringify(thisNode,null,2))
 	}
 	
 	//JSON stringify and parse to fill in any undefined array holes with nulls
@@ -1759,6 +1851,9 @@ function ingestLiterals(valueString,option,$)
 
 function alterObject(obj,valueArg,fromArg,pathArg,option)
 {	
+	cdebug("valueArg: " +JSON.stringify (valueArg,null,2))
+	cdebug("fromArg: " +JSON.stringify (fromArg,null,2))
+	cdebug("pathArg: " +JSON.stringify (pathArg,null,2))
 
 	//if not -x or -X we are using -o -p -v -f values
 	//validate those and build pathArgValidated
@@ -1768,6 +1863,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 		//-o - operation
 		if(Object.keys(option.opArg)[0] !== undefined) { 
 			opArg = Object.keys(option.opArg)[0]
+			cdebug("opArg: " + opArg)
 		} 
 
 		//-v or -V - value	
@@ -1777,18 +1873,23 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 				try { valueArg = readFile(valueArg) } catch(error) { throw new Error(error) };
 			}
 
+			//cdebug("valueArg (before): " + JSON.stringify(valueArg))
 			//treat contents of valueArg as String if -s specified, escape all special characters
 			if(option.s) { 
+				//cdebug("option.s: string treatment")
 				valueArg = '"' + valueArg.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f-\uFFFF]/g, function(chr) { return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4) })+'"' 
 			} 
+			cdebug("valueArg (after): " + JSON.stringify(valueArg))
 	
 			try { valueArg = JSON.parse(valueArg) } catch(e){ throw new Error(e) }
 			
+			//cdebug("valueArg: " + valueArg)
 		}
 
 		//-f - from path
 		//create fromArgValidated
 		if(fromArg !== undefined) { 
+			//cdebug("fromArg: " + JSON.stringify(fromArg,null,0))
 			//this is a JSONPath, resolve
 			if(fromArg === "$"){
 				fromArgValidated = ""
@@ -1816,36 +1917,44 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 		//-p - (path) can resolve to multiple paths
 		//create pathArgValidated array
 		if(pathArg !== undefined) { 
+			//cdebug("pathArg: " + JSON.stringify(pathArg,null,0))
 			//JSONPath $ is "" easy
 			if(pathArg === "$"){ 
 				pathArgValidated=[""]
 			}
 			//JSONPath of some sort, resolve
 			else if(pathArg[0] === "$"){
+				cdebug("Resolving JSONPath for path...")
 
 				//expand any union at the end of the string
 				try { pathArgValidated = objectifyExpressions([pathArg],{'expandTrailingUnion':true,'allowExpressions':true}) } catch(error) { throw new Error(error) }
+				cdebug("pathArgValidated (post-expand):\n" + JSON.stringify(pathArgValidated,null,2))
 
 				//take each path and verify it exists (remove, replace) or could exist (copy, move, add)
 				pathArgValidated = pathArgValidated.map(function(p){
 					//p is an object: {"path":[]}
+					cdebug("my p.path:\n" + JSON.stringify(p.path,null,2))
 
 					//if our path contains NO expressions, just absolute addresses: strings and numbers, return
 			
 					//xp "expanded path" of p evaluated through jsonPath and returned as JSON Pointer
 					try { var xp = jsonPath(obj, p.path, {resultType:"PATH_JSONPOINTER"}); } catch(error) { throw new Error(error) };
+					cdebug("xp: " + JSON.stringify(xp,null,0))
 
 					//if it resolved it will have a length > 0, return "expanded path"
 					if (xp.length) { 
+						cdebug("return xp")
 						return xp 
 					}
 					//if we get nothing and it is remove or replace, return nothing - it should have existed!
 					//gracefully ignore non-existant paths
 					else if ( !xp.length && option.G && (option.opArg.remove || option.opArg.replace || option.opArg.test)) { 						
 						//return the non-existant path so we can get yelled at
+						cdebug("return p: " + JSON.stringify(p,null,0))
 						return "/"+p.path.map(function(p){ return p.toString().replace(/~/g,"~0").replace(/\//g,"~1")}).join('/')
 					}
 					else if ( !xp.length && (option.opArg.remove || option.opArg.replace || option.opArg.test)) {
+						cdebug("return \"\"")
 						return ""					
 					}
 					
@@ -1853,6 +1962,8 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 					var pp = p.path.slice()
 					//create pc "path child", wgile creating pp
 					var pc = pp.pop()
+					cdebug("path parent (pp): " + JSON.stringify(pp,null,2))
+					cdebug("path child (pc): " + JSON.stringify(pc,null,2))
 			
 					if(!pp.length && pc.expression === "-"){
 						var possiblePaths='/-'
@@ -1866,9 +1977,11 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 						if (!ppv.length) {
 							return ""
 						}
+						//cdebug("ppv: " + JSON.stringify(ppv,null,2))
 			
 						//re-attach our path child (pc) to 1 or more ppv
 						var possiblePaths = ppv.map(function(ppve) {	
+							//cdebug("ppve: " + JSON.stringify(ppve,null,0))
 
 							//put child back on end
 							ppve.path.push(pc.expression === "-" ? "-" : pc)								
@@ -1876,12 +1989,16 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 							//test the child path to be either: ["key"] ['key'] .key (even though is should be normalized to ["Key"]
 							//allow [-] however any other [#] should have resolved, JSON Patch does not allow for indices beyond length
 							if(pc !== null && (pc.constructor === String || pc.constructor === Array || pc.expression === "-")) { 
+								//cdebug("ppve: " + JSON.stringify(ppve,null,2))
+								//cdebug("ppve.path: " + JSON.stringify(ppve.path,null,2))
 								//possiblePath verified element in json pointer
 								var ppve_jp = "/" + ppve.path.map(function(p){ return p.toString().replace(/~/g,"~0").replace(/\//g,"~1")}).join('/')
+								cdebug("ppve_jp: " + JSON.stringify(ppve_jp,null,2))
 								//return the JSONPath (ppve+pc) converted to JSON Pointer
 								return ppve_jp
 							}
 							else {
+								cdebug("return ''")
 								return ""							
 							}
 						})
@@ -1895,6 +2012,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 							possiblePaths = ''
 						}
 					}
+					//cdebug("possiblePaths: " + JSON.stringify(possiblePaths,null,2))
 					//return possible paths
 					return possiblePaths
 				})
@@ -1912,12 +2030,14 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 					return !pos || item != ary[pos - 1];
 				});
 
+				//cdebug("pathArgValidated (post-mangling):\n" + JSON.stringify(pathArgValidated,null,2))
 				
 				//gripe mode -G otherwise we just ignore it
 				if (!pathArgValidated.length && option.G){
 					throw new Error("Unable to resolve path: " + pathArg)
 				}
 				else if (pathArgValidated.length > 1){
+					cdebug("Multiple paths returned for from path: " + pathArg + "\n" + pathArgValidated.join("\n") )
 					if(option.opArg.move) {
 						throw new Error("Move operation cannot have multiple destinations: " + pathArg + "\n" + pathArgValidated.join("\n"))
 					}
@@ -1930,9 +2050,12 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 			else {
 				throw SyntaxError("Unrecognized query syntax: " + pathArg)
 			}
+			cdebug("pathArgValidated:\n" + JSON.stringify(pathArgValidated,null,2))
 		}		 
 	}
 
+	cdebug("fromArgValidated: " +JSON.stringify(fromArgValidated,null,2))
+	cdebug("pathArgValidated: " +JSON.stringify(pathArgValidated,null,2))
 
 	//Operations - JSON Merge Patch, merge, diff, and JSON Patch
 	
@@ -1951,12 +2074,15 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 			if(fromArgValidated){				
 				//since this is already normalized into JSON Pointer, pass to jsonPath as object				
 				try { var rawVal = jsonPath(obj,objectifyExpressions([fromArgValidated])[0].path,null)[0] } catch(e){throw new Error(e)}
+				cdebug("rawVal: " + JSON.stringify(rawVal,null,0))
 				valueArg=rawVal
+				cdebug("valueArg: " + valueArg)
 				if(valueArg === undefined){ throw new Error("From path does not exist: " + fromArgValidated) }
 			}
 			else if(fromArgValidated === ""){
 				//since this is already normalized into JSON Pointer, pass to jsonPath as object
 				valueArg = jsonPath(obj,[],null)[0]
+				cdebug("valueArg!: " + JSON.stringify(valueArg))
 			}
 
 			//no destination path mean it's applying to the whole document
@@ -1966,10 +2092,14 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 			else{
 				//if we have more than one path, run for each
 				pathArgValidated.forEach(function(p){
+					cdebug("path (p): " + JSON.stringify(p,null,0))
 					//get value of p within the obj
 					try { var pval = jsonPath(obj,objectifyExpressions([p])[0].path,null)[0] } catch(e){throw new Error(e)}
+					cdebug("path value (pval): " + JSON.stringify(pval,null,0))
 
+					cdebug("obj pre: "+JSON.stringify(obj))
 					var mergedValue = merge(pval,valueArg,(option.opArg.mergepatch ? true : false)) 
+					cdebug("mergeFromToPath: "+JSON.stringify(obj))
 					
 					//need to replace this data within the main object
 					try { obj = jsonpatch.apply_patch(obj,[{'op':"replace",'path':p,'value':mergedValue}]) } catch(e){throw new Error(e)}
@@ -2000,12 +2130,14 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 			var opArray=[{}]
 			//make opArray
 			for(i=0; i < pathArgValidated.length; i++){
+				cdebug("pathArgValidated["+i+"]: " + pathArgValidated[i])
 				opArray[i]={'op':opArg,'path':pathArgValidated[i],'from':fromArgValidated,'value':valueArg}
 			}		
 		}
 		else {
 			throw new Error("JSON Patch operation with no path provided!")
 		}
+		cdebug("opArray:\n" + JSON.stringify(opArray,null,2))
 		//try and apply the patch, throwing an error otherwise
 		try { obj = jsonpatch.apply_patch(obj,opArray) } catch(e){throw new Error(e)}
 	}
@@ -2015,6 +2147,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 //jsc lacked printErr() in 10.4-10.7
 if (typeof printErr === "undefined" ) { function printErr(string) { debug(string) } }
 
+function cdebug(string) { if(option.z) debug(string) }
 
 //*********//
 //VARIABLES// 
@@ -2091,12 +2224,18 @@ var JSONPatchArg = decodeURIComponent(escape(arguments[10])) || '';
 //MAIN//
 //***//
 
+cdebug("arguments: " + JSON.stringify(arguments,null,2))
+cdebug("optionsArg: " + optionsArg)
+cdebug("query: " + JSON.stringify(query,null,0))
+//cdebug("option.opArg: " + JSON.stringify(option.opArg,null,2))
+cdebug("option: " +JSON.stringify (option,null,2))
 
 //get our data if we can read files
 if (typeof readFile === "function" ) {
 	//max file size is 2GiB (2147483647 bytes)
 	//however print() maxes out at 715827882 bytes and stringify maxes out at 2GB
 	try { var fileText = readFile(fileArg) } catch(error) { quit() };
+	cdebug("fileText: " + fileText)
 } 
 else {
 	//if we are attempting to use a merge file later show the workaround then quit
@@ -2107,12 +2246,15 @@ else {
 	//readline will take in UTF-8 but pass to JS as if it was UTF-16, escape strips the leading 00 for decoding
 	while ( line = decodeURIComponent(escape(this.readline())) ) { fileText += line + '\n'; }	
 };
+//cdebug("fileText: " + fileText)
+//cdebug("/^\s*\$/.test(fileText): " + /^\s*\$/.test(fileText))
 
 //JS Literals
 if(!(option.S || option.s) && /^\s*\$/.test(fileText)){ 
 
 	if(option.k) {printErr("Literals processing forbidden! Exiting."); quit();}
 	//attempt to ingest the literals
+	//cdebug("Literals processing")	
 	try { var obj = ingestLiterals(fileText,option) }catch (e){printErr(e); quit()}	
 } 
 //import JSON
@@ -2121,6 +2263,7 @@ else {
 	//-v simply wraps the input in double quotes and escapes newlines
 	if(option.S) {
 		var tempJSON='"'+fileText.slice(0,-1).replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f-\uFFFF]/g, function(chr) { return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4) })+'"'
+		//cdebug("tempJSON: " + tempJSON)
 		fileText=tempJSON
 	}
 	//strip all newlines in case of hard wrapped input (faster than external tools)
@@ -2132,7 +2275,10 @@ else {
 
 //invoke alterObject for JSON Patch, JSON Merge Patch, etc...
 if(option.opArg.constructor === Object && Object.keys(option.opArg).length){
+	//cdebug("obj: " + JSON.stringify(obj))
+	//cdebug("fromArg: " + JSON.stringify(fromArg))
 	try { var obj = alterObject(obj,valueArg,fromArg,pathArg,option) } catch(e){printErr(e); quit()}
+	cdebug("obj: " + JSON.stringify(obj))
 }
 
 //invoke jsonPath with obj, query and options, creates resultObject  
@@ -2143,12 +2289,15 @@ else {
 	//turn query into the array jsonPath is expecting
 	try { var queryObject = objectifyExpressions([query],{'disallowData':true,'allowExpressions':true})[0].path } catch(e){printErr(e); quit()}
 
+	cdebug("queryObject: " + JSON.stringify(queryObject,null,2))
 
 	try { var resultObject = jsonPath(obj, queryObject, (option.j || option.r) ? {'resultType': option.d ? "PATH_DOTTED" : option.r ? "PATH_JSONPOINTER" : "PATH", 'singleQuoteKeys':option.q} : null); } catch(error) { printErr(error); quit() };
+	//cdebug("resultObject (raw):" + JSON.stringify(resultObject,null,0))
 }
 
 if ( !option.a && Array.isArray(resultObject) && resultObject.length === 1 ){resultObject=resultObject[0]}
 else if (option.a && !Array.isArray(resultObject)) {resultObject=[resultObject]}
+//cdebug("resultObject (post):" + JSON.stringify(resultObject,null,0))
 
 
 //-N reduce the Nesting
@@ -2200,6 +2349,7 @@ if ( option.T || option.L || option.J || option.R || ((option.j || option.r) && 
 } 
 //else JSON stringify
 else { 
+	//cdebug("spaceArg: " + spaceArg)
 	try { var resultText = JSON.stringify(resultObject,null,spaceArg); } catch(error){printErr("JSON.stringify " + error)}
 }
 
