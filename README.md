@@ -12,16 +12,16 @@ Please see the [brunerd JSONPath](https://github.com/brunerd/jsonpath) GitHub pa
   
 [JSONPath](https://github.com/brunerd/jsonpath) has a richly expressive query syntax that can do things JSON Pointer can't do:
 ```
-jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Comming Soon","excited":"I can\'t wait!"}}}' 
+jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Coming Soon","excited":"I can\'t wait!"}}}' 
 [
-  "Comming Soon",
+  "Coming Soon",
   "I can't wait!"
 ]
 ```
   
 [JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a *single* property only
 ```
-jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Comming Soon","excited":"I can\'t wait!"}}}'
+jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Coming Soon","excited":"I can\'t wait!"}}}'
 "I can't wait!" 
 ```
 
