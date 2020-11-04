@@ -8,13 +8,9 @@ It is a non-compiled script, so it can be easily studied, maintained, or modifie
 See my blog for articles, examples, and musing on the jpt: https://www.brunerd.com/blog/category/projects/jpt/
 
 ## Examples
-[JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a single property only
-```
-jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Comming Soon","excited":"I can\'t wait!"}}}'
-"I can't wait!" 
-```
-
-[JSONPath](https://github.com/brunerd/jsonpath) is not a standard (but hey, neither is [jq](https://github.com/stedolan/jq)!) it has a richly expressive query syntax that can do things JSON Pointer can't do.
+Please see the [brunerd JSONPath](https://github.com/brunerd/jsonpath) GitHub page for an *extensive* list of example JSONPath queries.
+  
+[JSONPath](https://github.com/brunerd/jsonpath) has a richly expressive query syntax that can do things JSON Pointer can't do:
 ```
 jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Comming Soon","excited":"I can\'t wait!"}}}' 
 [
@@ -22,6 +18,13 @@ jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Comming
   "I can't wait!"
 ]
 ```
+  
+[JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a *single* property only
+```
+jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Comming Soon","excited":"I can\'t wait!"}}}'
+"I can't wait!" 
+```
+
 
 ## Help File (-h)
 ```
@@ -32,10 +35,10 @@ jpt [options] [<query>] [<file>]
 
 Arguments:
 
-[<query>] - JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.
+[<query>] -	JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.
 		
-[<file>] - standard UNIX file path, input can also come from Unix pipe or file redirection
-		 If no file specified, waits for input on /dev/stdin until receiving Control-D
+[<file>] -	standard UNIX file path, input can also come from Unix pipe or file redirection
+		If no file specified, waits for input on /dev/stdin until receiving Control-D
 
 Options:
 	-h this help file
@@ -65,16 +68,16 @@ Alternate Output Modes:
 		-E% encodes both -r and -R JSON Pointer paths in URI fragment style
 
 	  -J and -R options:
-	  	-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)
-	    -K key/property name only (no preceding path)
+		-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)
+		-K key/property name only (no preceding path)
 		  -i "<value>" indent spaces (0-10) or character string for each level of indent
 
 	-L output JSON Path Object Literal notation of the resulting object
 		Format: <JSON Path>=<value>
-				<JSON Path> is simply Javascript expression syntax with $ as the object name
-					Example: $.key, $["key"], $['key'], or $[0] 
-				<value> is any valid JSON valid plus single quoted strings
-					Example: 'string', "string", [], {}, 42, true, false, null
+			<JSON Path> is simply Javascript expression syntax with $ as the object name
+				Example: $.key, $["key"], $['key'], or $[0] 
+			<value> is any valid JSON valid plus single quoted strings
+				Example: 'string', "string", [], {}, 42, true, false, null
 
 	-L, -J, and -R options:
 		-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects
