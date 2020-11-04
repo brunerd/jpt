@@ -28,16 +28,16 @@ jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Coming Soon","excited":
 
 ## Help File (-h)
 ```
-jpt - JSONPath Tool (https://github.com/brunerd/jpt)
+jpt - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
 
 Arguments:
 
-[<query>] -	JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.
+[<query>] - JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.
 		
-[<file>] -	standard UNIX file path, input can also come from Unix pipe or file redirection
+[<file>] - standard UNIX file path, input can also come from Unix pipe or file redirection
 		If no file specified, waits for input on /dev/stdin until receiving Control-D
 
 Options:
@@ -70,7 +70,7 @@ Alternate Output Modes:
 	  -J and -R options:
 		-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)
 		-K key/property name only (no preceding path)
-		  -i "<value>" indent spaces (0-10) or character string for each level of indent
+			-i "<value>" indent spaces (0-10) or character string for each level of indent
 
 	-L output JSON Path Object Literal notation of the resulting object
 		Format: <JSON Path>=<value>
@@ -185,6 +185,7 @@ JSON Path Primer
 		 Unions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices
 
 	Horrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]
+	For a more examples: https://github.com/brunerd/jsonpath
 
 JSON Pointer Primer
 	""		an empty string represents the JSON document
@@ -195,6 +196,7 @@ JSON Pointer Primer
 	~ in a property name must be escaped as ~0
 	/ in a property name must be escaped as ~1
 
+	Example: /JSON pointer/does/this/1/thing/well
 
 ```
 
