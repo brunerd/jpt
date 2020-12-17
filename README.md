@@ -55,7 +55,7 @@ JSON Output Options:
 	-a always output an array for empty or single element arrays, do NOT reduce to a single JSON primitive value
 	-i "<number/string>"  indent number of spaces (0-10) or use a string for each level of indent
 	-u Unicode escape (\u) characters above 0x7F
-	-F Flatten array output, if possible, using flat()
+	-F Flatten array output
 	-N Nesting reduction, single element arrays will be flattened, stopping if array length > 1
 	-O Order all property names alphabetically in all objects (array order is not changed)
 
