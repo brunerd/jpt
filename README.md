@@ -37,25 +37,37 @@ Arguments:
 
 [<query>] - JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.
 		
-[<file>] - standard UNIX file path, input can also come from Unix pipe or file redirection
-		If no file specified, waits for input on /dev/stdin until receiving Control-D
+[<file>] - path to JSON file
+
+Notes:
+	JSON is the default output mode, to change see Alternate Output Modes.
+	Single item arrays will be reduced to a single primitive JSON value (-a to inhibit)
+	File/stream input accepts both JSON and JSON Path Object Literal (-k to inhibit processing)
+	If no file specified, jpt will await input by Unix pipe, file redirection, or interactively by /dev/stdin until receiving Control-D
+	Comments, trailing commas, and hard-wrap newlines will be automatically and progressively stripped if initial JSON parsing fails
+	JSON Lines will be converted to an array for processing, queries, and output
+	Use -c to be made aware of either of these automatic recovery processes
 
 Options:
 	-h this help file
 
-Processing Options:
-	-S Input (file or stdin) as a JSON string
-	-I Inhibit path inference for JSON Path Object Literals lacking array and object initializers
-	-G "Gripe" mode, gripes about more things, mainly importing Object Literals and non-existant JSONPaths and JSON Patch ops
-	-k Disallow processing JSONPath Object Literals (by default it does) (see -L for outputting JSOL)
-	-g Use null for values when path-only JSON Object literals are ingested 
-
 JSON Output Options:
-	-i "<value>"  Indent per-level spaces (0-10) or a character string for the value
-	-u Escape all string characters above 0x7F as UTF-16 surrogate pairs \u
-	-a Always return an array, inhibit reduction of single element arrays, will return [] for nothing
-	-F Flatten arrays if possible
-	-N Nesting reduction, enclosing arrays will be removed, stopping if array length > 1
+	-a always output an array for empty or single element arrays, do NOT reduce to a single JSON primitive value
+	-i "<number/string>"  indent number of spaces (0-10) or use a string for each level of indent
+	-u Unicode escape (\u) characters above 0x7F
+	-F Flatten array output, if possible, using flat()
+	-N Nesting reduction, single element arrays will be flattened, stopping if array length > 1
+	-O Order all property names alphabetically in all objects (array order is not changed)
+
+Input Options:
+	-c "complain" via stderr and an exit code of 1 for comments, trailing commas, JSON Lines, or hard-wrapped data
+	-S String input, treat main input (file or stdin) as a JSON string
+
+Advanced Input Options:
+	-g "guess", use null values for JSON Path Object Literals with no assigned value (path-only)
+	-k kill processing of JSONPath Object Literals (see -L for outputting JPOL)
+	-G "Gripe" when importing contradictory JSONPath Object Literals and non-existant JSONPaths and JSON Patch ops
+	-I Inhibit type inference for JSONPath Object Literals that lack array and object initializers
 
 Alternate Output Modes:
 	-l output the length of the array, number of properties in an object, or length of string
@@ -163,11 +175,6 @@ Data Alteration:
 			-V <filespec to JSON value> a file to use for the contents of value
 				-s treat input from -v or -V as a string
 				
-Notes:
-	JSON is the default output mode, to change see Alternate Output Modes.
-	Single item arrays will be reduced to a single primitive JSON object (-a to inhibit)
-	File/stream input accepts both JSON and JSON Path Object Literal (-k to inhibit literal intake)
-
 JSON Path Primer
 	$ - the root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $
 	.key - is the "child" operator for a property named 'key' in a JSON object
