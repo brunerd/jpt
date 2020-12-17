@@ -5,13 +5,13 @@
 # FUNCTIONS #
 #############
 
-#v0.9.5
+#v0.9.6
 function jpt #([options] [query] [fileArg])
 {
 : <<-LICENSE_BLOCK
 jpt - JSON Power Tool (https://github.com/brunerd/jpt)
 Copyright (c) 2020 Joel Bruner (https://github.com/brunerd)
-Other portions: Copyright (c) 2007 Stefan Goessner (goessner.net), Copyright (c) 2020 "jpaquit" (https://github.com/jpaquit), Copyright (c) 2016 Kris Nye, Copyright (c) 2012 Dharmafly
+Other portions: Copyright (c) 2007 Stefan Goessner (goessner.net), Copyright (c) 2020 "jpaquit" (https://github.com/jpaquit), Copyright (c) 2016 Kris Nye, Copyright (c) 2012 Dharmafly, Copyright (c) Kyle Simpson
 Licensed under the MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -177,7 +177,7 @@ function jsonPath(obj, expr, arg) {
 				if(Math.sign(step) === -1){
 					len=val.length, start=len-1, end=(len+(loc[1] === null ? 1 : 0))*(-1)
 				}
-				else{
+				else {
 					len=val.length, start=0, end=len
 				}
 
@@ -371,7 +371,7 @@ function renderObject(obj,pathName,option,level) {
 						//escape the whitespaces and control characters in the key name
 						var keyEsc=option.R ? key.replace(/~/g,"~0").replace(/\//g,"~1") : key.replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u001f\u007f]/g, function(chr) {return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).substr(-4)})
 
-						//"jot" (dot) notation as long as we don't begin with a number and only have these chars
+						//dot notation as long as we don't begin with a number and only have these chars
 						if (option.d && !option.R && (/^[A-Za-z_$][$\w\d]*$/).test(key)) {
 							var thisPath=(option.K ? '' : pathName + ".") + keyEsc
 						}
@@ -636,7 +636,6 @@ function objectifyExpressions(array,option)
 
 					}while(assignmentRegex.lastIndex !== 0 && assignmentRegex.lastIndex !== tempExpr.length)
 
-					
 					//throw an error if we are NOT allowing JSON Path object literals and we get something
 					if(option.disallowData && assignmentLocations.length){
 						throw new SyntaxError("Data assignment (=) not allowed in path specification")
@@ -1988,6 +1987,162 @@ function alterObject(obj,valueArg,fromArg,pathArg,option)
 	return obj
 }
 
+// removeComments.js - James Padolsey - 2009 
+// https://j11y.io/javascript/removing-comments-in-javascript/
+// This function is loosely based on the one found here: http://www.weanswer.it/blog/optimize-css-javascript-remove-comments-php/
+function removeComments(str) {
+    str = ('__' + str + '__').split('');
+    var mode = {
+        doubleQuote: false,
+        blockComment: false,
+        blockCommentXML: false,
+        lineComment: false,
+    };
+    for (var i=0, l=str.length; i < l; i++) {
+   		//if inside a double quote and we are again at a " see if it was escaped or not
+        if (mode.doubleQuote) {
+            if (str[i] === '"' && str[i-1] !== '\\') {
+                mode.doubleQuote = false;
+            }
+            continue;
+        }
+ 
+ 		// block comment */ over
+        if (mode.blockComment) {
+            if (str[i] === '*' && str[i+1] === '/') {
+                str[i+1] = '';
+                mode.blockComment = false;
+            }
+            str[i] = '';
+            continue;
+        }
+		
+		//XML block comment --> is over
+        if (mode.blockCommentXML) {
+            if (str[i] === '-' && str[i+1] === '-' && str[i+2] === '>') {
+                str[i+1] = ''; str[i+2] = '';
+                mode.blockCommentXML = false;
+            }
+            str[i] = '';
+            continue;
+        }
+ 		
+ 		//\n or \n is end of a line comment
+        if (mode.lineComment) {
+            if (str[i+1] === '\n' || str[i+1] === '\r') {
+                mode.lineComment = false;
+            }
+            str[i] = '';
+            continue;
+        }
+ 		
+ 		//" is the beginning of a quote
+ 		if (str[i] === '"') {
+			//set the quote mode 
+			mode.doubleQuote = true;
+			continue;
+		}
+ 
+ 		//which kind of comment // or /*
+        if (str[i] === '/') {
+            if (str[i+1] === '*') {
+                str[i] = '';
+                mode.blockComment = true;
+                continue;
+            }
+            if (str[i+1] === '/') {
+                str[i] = '';
+                mode.lineComment = true;
+                continue;
+            }
+        }
+	
+ 		//-- comment
+        if (str[i] === '-' && str[i+1] === '-') {
+			str[i] = '';
+			mode.lineComment = true;
+			continue;
+        }
+
+ 		//<!-- XML block comment
+        if (str[i] === '<' && str[i+1] === '!' && str[i+2] === '-' && str[i+3] === '-') {
+			str[i] = '';
+			mode.blockCommentXML = true;
+			continue;
+        }
+
+ 		//*** comment from ionodecache.json
+        if (str[i] === '*' && str[i+1] === '*' && str[i+2] === '*') {
+			str[i] = '';
+			mode.lineComment = true;
+			continue;
+        }
+		
+		//shell style comments
+		if (str[i] === '#') {
+			str[i] = '';
+			mode.lineComment = true;
+			continue;
+		}
+		
+		//asm style comments
+		if (str[i] === ';') {
+			str[i] = '';
+			mode.lineComment = true;
+			continue;
+		}
+
+    }
+    //rejoin, omitting blanked out elements
+    return str.join('').slice(2, -2);
+}
+
+// removeComments.js - James Padolsey - 2009 
+// https://j11y.io/javascript/removing-comments-in-javascript/
+// This function is loosely based on the one found here: http://www.weanswer.it/blog/optimize-css-javascript-remove-comments-php/
+function removeCommas(str) {
+    str = ('__' + str + '__').split('');
+    var mode = {
+        doubleQuote: false,
+        blockComment: false,
+        lineComment: false,
+    };
+    for (var i=0, l=str.length; i < l; i++) {
+        if (mode.doubleQuote) {
+            if (str[i] === '"' && str[i-1] !== '\\') {
+                mode.doubleQuote = false;
+            }
+            continue;
+        }
+  		
+ 		if (str[i] === '"') {
+			//set the quote mode 
+			mode.doubleQuote = true;
+			continue;
+		}
+
+ 		//detect orphaned , at the end of an array or object
+ 		//requires any comments to be removed FIRST
+        if (str[i] === ',') {
+			//if next character is whitespace
+			var j=i+1
+			//go through string until the next non-whitespace character
+			while(/\s/.test(str[j]) && j < l) { j += 1 }
+			
+			//if the next non-space char is the end of an array or object
+			if (str[j] === ']' || str[j] === '}') {
+				str[i] = '';
+				i=j-1
+				continue;
+			}
+			continue;
+        }
+    }
+    //rejoin, omitting blanked out elements
+    return str.join('').slice(2, -2);
+}
+
+
 //jsc lacked printErr() in 10.4-10.7
 if (typeof printErr === "undefined" ) { function printErr(string) { debug(string) } }
 
@@ -2081,26 +2236,82 @@ else {
 	while ( line = decodeURIComponent(escape(this.readline())) ) { fileText += line + '\n'; }	
 };
 
-//JS Literals
+//Process JSONPath Object Literals automatically if not -s or -S
 if(!(option.S || option.s) && /^\s*\$/.test(fileText)){ 
-
+	//unless we are forbidding this
 	if(option.k) {printErr("Literals processing forbidden! Exiting."); quit();}
 	//attempt to ingest the literals
 	try { var obj = ingestLiterals(fileText,option) }catch (e){printErr(e); quit()}	
 } 
 //import JSON
 else {
-	
 	//-v simply wraps the input in double quotes and escapes newlines
 	if(option.S) {
 		var tempJSON='"'+fileText.slice(0,-1).replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/[\b]/g,'\\b').replace(/\f/g,'\\f').replace(/\r/g,'\\r').replace(/\t/g,'\\t').replace(/[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f-\uFFFF]/g, function(chr) { return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4) })+'"'
 		fileText=tempJSON
+		//try to parse the JSON document, quit if error
+		try { var obj = JSON.parse(fileText) } catch(error) { printErr("JSON Input Data: " + error); quit() };	
 	}
-	//strip all newlines in case of hard wrapped input (faster than external tools)
-	else { fileText=fileText.replace(/\n/gm, "") }
-	
-	//try to parse the JSON document, quit if error
-	try { var obj = JSON.parse(fileText) } catch(error) { printErr("JSON Input Data: " + error); quit() };	
+
+	else {		
+		//try to parse the original JSON document, if not see what can be done
+		try { var obj = JSON.parse(fileText) } 
+		catch(error) { 
+			var primaryParseError=error
+			if (option.c){ printErr("Malformed JSON: " + error); }
+
+			// remove comments, attempt parse
+			if (option.c){ printErr("Attempting recovery: Removing comments"); }
+			//ensure string is newline terminated
+			tempJSON=removeComments(fileText+'\n')
+
+			//normalize the line endings from \r to \n and remove leading spaces and indents, then empty lines
+			var tempJSON=tempJSON.replace(/\r/gm, '\n').replace(/^\s+/gm,'').replace(/\s+$/gm,'').replace(/\n{2,}/gm, '\n')
+
+			try { var obj = JSON.parse(tempJSON) } 
+			catch(error) { 
+				if (option.c){ printErr("Continuing recovery: Removing any trailing commas"); }
+				// remove trailing commas from preceding, attempt parse
+				tempJSON=removeCommas(tempJSON)
+
+				try { var obj = JSON.parse(tempJSON) } 
+				catch(error) { 					
+					var possiblyJSONLines=true
+					var definitelyNotJSONLines=false
+					
+					//speculative try parsing the first line only, this "fails fast" and is quiet about it
+					var tempJSON_line1=/.*/.exec(tempJSON)[0]
+
+					try { JSON.parse(tempJSON_line1) }
+					catch(error) { possiblyJSONLines=false }
+
+					if (possiblyJSONLines) {
+						if (option.c){ printErr("Continuing recovery: Converting possible JSON Lines into an array"); }
+						// JSON Lines handling: turn into array, attempt parse
+						var JSONLines='[' + tempJSON.replace(/$/gm,',').replace(/,+$/,'') + ']'
+
+						try { var obj = JSON.parse(JSONLines) } 
+						catch(error) {
+							if (option.c){ printErr("Continuing recovery: Not JSON Lines (or truncated/hard-wrapped/malformed JSON Lines)"); }
+							definitelyNotJSONLines=true
+						}
+					}
+
+					if(!possiblyJSONLines || definitelyNotJSONLines){
+						if (option.c){ printErr("Continuing recovery: Removing all line endings from comma cleaned input"); }
+						tempJSON=tempJSON.replace(/^\s*[\r\n]+/gm,'').replace(/\n/gm, '')
+
+						try { var obj = JSON.parse(tempJSON) } 
+						catch(error) {
+							//sorta redundant with -c but ensures the final failure is reported
+							printErr("Malformed JSON (recovery failed): " + primaryParseError);
+							quit()
+						}										
+					}
+				}
+			}
+		}
+	}
 }
 
 //invoke alterObject for JSON Patch, JSON Merge Patch, etc...
@@ -2199,7 +2410,7 @@ EOF
 #############
 
 read -r -d '' helpText <<'EOT'
-jpt - JSON Power Tool (https://github.com/brunerd/jpt)\n\nUsage:\njpt [options] [<query>] [<file>]\n\nArguments:\n\n[<query>] - JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.\n\t\t\n[<file>] - standard UNIX file path, input can also come from Unix pipe or file redirection\n\t\tIf no file specified, waits for input on /dev/stdin until receiving Control-D\n\nOptions:\n\t-h this help file\n\nProcessing Options:\n\t-S Input (file or stdin) as a JSON string\n\t-I Inhibit path inference for JSON Path Object Literals lacking array and object initializers\n\t-G "Gripe" mode, gripes about more things, mainly importing Object Literals and non-existant JSONPaths and JSON Patch ops\n\t-k Disallow processing JSONPath Object Literals (by default it does) (see -L for outputting JSOL)\n\t-g Use null for values when path-only JSON Object literals are ingested \n\nJSON Output Options:\n\t-i "<value>"  Indent per-level spaces (0-10) or a character string for the value\n\t-u Escape all string characters above 0x7F as UTF-16 surrogate pairs \\u\n\t-a Always return an array, inhibit reduction of single element arrays, will return [] for nothing\n\t-F Flatten arrays if possible\n\t-N Nesting reduction, enclosing arrays will be removed, stopping if array length > 1\n\nAlternate Output Modes:\n\t-l output the length of the array, number of properties in an object, or length of string\n\n\t-j JSONPath path(s) matched by the query results\n\t-J JSONPath path(s) of the object returned by the query\n\n\t-r JSON Pointer path(s) matched by the query results\n\t-R JSON Pointer path(s) of the object returned by the query\n\t\t-E% encodes both -r and -R JSON Pointer paths in URI fragment style\n\n\t  -J and -R options:\n\t\t-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)\n\t\t-K key/property name only (no preceding path)\n\t\t\t-i "<value>" indent spaces (0-10) or character string for each level of indent\n\n\t-L output JSON Path Object Literal notation of the resulting object\n\t\tFormat: <JSON Path>=<value>\n\t\t\t<JSON Path> is simply Javascript expression syntax with $ as the object name\n\t\t\t\tExample: $.key, $["key"], $['key'], or $[0] \n\t\t\t<value> is any valid JSON valid plus single quoted strings\n\t\t\t\tExample: 'string', "string", [], {}, 42, true, false, null\n\n\t-L, -J, and -R options:\n\t\t-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects\n\t\t-Z "<int>" Depth\n\t\t\tCombined with -L it will coalesce lower depth levels into a compound JSON object/array statement\n\t\t\tCombined with -P, -J or -R will return only purely primitive nodes at or below the Z level\n\n\tJSON Path output options for -L -J and -j:\n\t\t-d Use dot notation rather than bracket notation, when possible\n\t\t-q Use single quotes for bracketed property names\n\t\t-Q Use single quotes for both bracketed property names and string values (-L only)\n\n\n\t-T output resulting data as Text aka "Trampling" by omitting all structures and property names\n\t\t-e Print escaped characters literally: \\b \\f \\n \\r \\t \\\\\n\t\t-n Print null values as the string 'null'\n\t\t-i "<value>" indent spaces (0-10) or character string for each level of indent\n\n\t\t-E "<value>" encoding options for -T output:\n\t\t  Encoding for character values above 0x007F (by default):\n\t\t\tx hexadecimal value (UTF-8) with \\x escapes \n\t\t\tO octal value (UTF-8), with \\nnn octal escapes (shell style)\n\t\t\t0 octal value (UTF-8) with \\0nnn octal escapes (zsh style)\n\t\t\tu Unicode value (UTF-16) with \\u escapes\n\t\t\tU Unicode Code Point with \\U zsh escapes\n\t\t\tE Unicode Code Point with \\u{} ES2016 style escapes\n\t\t\t% URI encoded with %, JSON Pointer paths are URI encoded\n\n\t\t\t-A encodes all characters (0x0000-0xFFFF)\n\t\t\n\t\t  Encoding for all characters by default:\n\t\t\th hexadecimal value (UTF-8), raw, lowercase\n\t\t\tH hexadecimal value (UTF-8), raw, uppercase\n\t\t\to octal value (UTF-8) with ES2015 octal prefix "0o"\n\t\t\t6 binary value (UTF-16), 16 bits (all)\n\t\t\tB binary value (UTF-16), 8 bit wide (all)\n\t\t\tb binary value (UTF-8), 8 bit wide (all)\n\t\t\t\tBinary note: Numbers are converted to "positional" binary\n\t\t\t\tThis is NOT the internal representation\n\nData Alteration:\n\tData can be manipulated by applying a JSON Patch file or an inline statement (-X and -x)\n\tA single operation can be made with -o and a combination of -c -f -v\n\n\tJSON Patch document processing:\n\t  Create a file for common operations\n\t\t-x <inline JSON Patch> JSON Patch array expressed as a string\n\t\t-X <filespec to JSON Patch> a file path spec to a JSON Patch array\n\n\tJSON Patch and JSON Merge Patch operations:\n\t  A la carte operations can be crafted using -o -c -v and -f\n\n\t\tOperation (-o):\n\t\t\t-o "add" -p <path> -v <value>\n\t\t\t\tadd or replace value of an object property or add/insert array index (RFC7396)\n\t\t\t-o "replace" -p <path> -v <value>\n\t\t\t\treplace value of existing object key or array index (RFC6902)\n\t\t\t-o "remove" -p <path>\n\t\t\t\tremove specified path from the document (RFC6902)\n\t\t\t-o "move" -f <from> -p <path>\n\t\t\t\tmove a path to a new or existing path/node(RFC6902)\n\t\t\t-o "copy" -f <from> -p <path>\n\t\t\t\tcopy a path to a new or existing path/node (RFC6902)\n\t\t\t-o "test" -p <path> -v <value>\n\t\t\t\ttest if a path matches a value exactly (RFC6902)\n\t\t\t-o "mergepatch" <-v/-V <value> | -f <path>> [-p <path>]\n\t\t\t\tRFC7396 JSON Merge Patch operation: null values delete target key\n\t\t\t\tCan pull data from -f <path> instead a -v/-V value, can merge to -p (if JSON Path can be multiple)\n\t\t\t-o "merge" <-v/-V <value> | -f <path>> [-p <path>]\n\t\t\t\tNon-RFC7396 merging operation: null values are retained\n\t\t\t\tCan pull data from -f <path> instead a -v/-V value, can merge to -p (if JSON Path can be multiple)\n\t\t\t-o "diff" -v <value>\n\t\t\t\tGiven a value, compare with main document and produce a JSON Merge Patch document\n\t\t\t\t\n\t\tPath (-p):\n\t\t\t-p <path> the target path in JSON Pointer or JSON Path\n\n\t\tFrom (-f):\n\t\t\t-f <path> the "from" path (JSON Pointer or Path) for copy and move operations\n\n\t\tValue (-v/-V):\n\t\t\t-v <JSON value> inline JSON expression\n\t\t\t-V <filespec to JSON value> a file to use for the contents of value\n\t\t\t\t-s treat input from -v or -V as a string\n\t\t\t\t\nNotes:\n\tJSON is the default output mode, to change see Alternate Output Modes.\n\tSingle item arrays will be reduced to a single primitive JSON object (-a to inhibit)\n\tFile/stream input accepts both JSON and JSON Path Object Literal (-k to inhibit literal intake)\n\nJSON Path Primer\n\t$ - the root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $\n\t.key - is the "child" operator for a property named 'key' in a JSON object\n\t..key - is a recursive operator that will find all properties name 'key' in the object\n\t['key] or ["key"] - quoted keys can accomodate any name, \\u Unicode escaping will be processed\n\t\t.. may precede a bracket, otherwise put them next to each other with no spaces, no dots\n\t.* ..* or [*] - the values of all the keys within an object or indices in an array\n\t[start:stop:step] - slice, behavior like Python, accepts integers (pos or neg),script and slice expressions, or empty\n\t[?(@.subKey == "This One!")] - filter expression substitute @ with the current object level\n\t\t  Comparison operators: can be ==, != and also regex =~ /string/ \n\t[(@.length/2)] - script expression returns value, good for arrays. Works in slices.\n\t[-] - for data alteration ops, used to add to the end of an array, borrowed from JSON Pointer\n\t[1] - an array index, integers only, cannot reference an numeric property name\n\t["a","b"] - a comma separated union can collect the values of multiple properties at the same level in an object\n\t\t Unions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices\n\n\tHorrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]\n\tFor a more examples: https://github.com/brunerd/jsonpath\n\nJSON Pointer Primer\n\t""\t\tan empty string represents the JSON document\n\t/\t\tis the root or next child node with a property named "" an empty string (JSONPath $[""])\n\t/key\t\tproperty named key in an object\n\t/1\t\tproperty named 1 in an object or a numeric index in an array\n\t/-\t\treferences the end of an array, where the next value goes (always non-existant in queries)\n\t~ in a property name must be escaped as ~0\n\t/ in a property name must be escaped as ~1\n\n\tExample: /JSON pointer/does/this/1/thing/well\n
+jpt - JSON Power Tool (https://github.com/brunerd/jpt)\n\nUsage:\njpt [options] [<query>] [<file>]\n\nArguments:\n\n[<query>] - JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.\n\t\t\n[<file>] - path to JSON file\n\nNotes:\n\tJSON is the default output mode, to change see Alternate Output Modes.\n\tSingle item arrays will be reduced to a single primitive JSON value (-a to inhibit)\n\tFile/stream input accepts both JSON and JSON Path Object Literal (-k to inhibit processing)\n\tIf no file specified, jpt will await input by Unix pipe, file redirection, or interactively by /dev/stdin until receiving Control-D\n\tComments, trailing commas, and hard-wrap newlines will be automatically and progressively stripped if initial JSON parsing fails\n\tJSON Lines will be converted to an array for processing, queries, and output\n\tUse -c to be made aware of either of these automatic recovery processes\n\nOptions:\n\t-h this help file\n\nJSON Output Options:\n\t-a always output an array for empty or single element arrays, do NOT reduce to a single JSON primitive value\n\t-i "<number/string>"  indent number of spaces (0-10) or use a string for each level of indent\n\t-u Unicode escape (\\u) characters above 0x7F\n\t-F Flatten array output, if possible, using flat()\n\t-N Nesting reduction, single element arrays will be flattened, stopping if array length > 1\n\t-O Order all property names alphabetically in all objects (array order is not changed)\n\nInput Options:\n\t-c "complain" via stderr and an exit code of 1 for comments, trailing commas, JSON Lines, or hard-wrapped data\n\t-S String input, treat main input (file or stdin) as a JSON string\n\nAdvanced Input Options:\n\t-g "guess", use null values for JSON Path Object Literals with no assigned value (path-only)\n\t-k kill processing of JSONPath Object Literals (see -L for outputting JPOL)\n\t-G "Gripe" when importing contradictory JSONPath Object Literals and non-existant JSONPaths and JSON Patch ops\n\t-I Inhibit type inference for JSONPath Object Literals that lack array and object initializers\n\nAlternate Output Modes:\n\t-l output the length of the array, number of properties in an object, or length of string\n\n\t-j JSONPath path(s) matched by the query results\n\t-J JSONPath path(s) of the object returned by the query\n\n\t-r JSON Pointer path(s) matched by the query results\n\t-R JSON Pointer path(s) of the object returned by the query\n\t\t-E% encodes both -r and -R JSON Pointer paths in URI fragment style\n\n\t  -J and -R options:\n\t\t-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)\n\t\t-K key/property name only (no preceding path)\n\t\t\t-i "<value>" indent spaces (0-10) or character string for each level of indent\n\n\t-L output JSON Path Object Literal notation of the resulting object\n\t\tFormat: <JSON Path>=<value>\n\t\t\t<JSON Path> is simply Javascript expression syntax with $ as the object name\n\t\t\t\tExample: $.key, $["key"], $['key'], or $[0] \n\t\t\t<value> is any valid JSON valid plus single quoted strings\n\t\t\t\tExample: 'string', "string", [], {}, 42, true, false, null\n\n\t-L, -J, and -R options:\n\t\t-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects\n\t\t-Z "<int>" Depth\n\t\t\tCombined with -L it will coalesce lower depth levels into a compound JSON object/array statement\n\t\t\tCombined with -P, -J or -R will return only purely primitive nodes at or below the Z level\n\n\tJSON Path output options for -L -J and -j:\n\t\t-d Use dot notation rather than bracket notation, when possible\n\t\t-q Use single quotes for bracketed property names\n\t\t-Q Use single quotes for both bracketed property names and string values (-L only)\n\n\n\t-T output resulting data as Text aka "Trampling" by omitting all structures and property names\n\t\t-e Print escaped characters literally: \\b \\f \\n \\r \\t \\\\\n\t\t-n Print null values as the string 'null'\n\t\t-i "<value>" indent spaces (0-10) or character string for each level of indent\n\n\t\t-E "<value>" encoding options for -T output:\n\t\t  Encoding for character values above 0x007F (by default):\n\t\t\tx hexadecimal value (UTF-8) with \\x escapes \n\t\t\tO octal value (UTF-8), with \\nnn octal escapes (shell style)\n\t\t\t0 octal value (UTF-8) with \\0nnn octal escapes (zsh style)\n\t\t\tu Unicode value (UTF-16) with \\u escapes\n\t\t\tU Unicode Code Point with \\U zsh escapes\n\t\t\tE Unicode Code Point with \\u{} ES2016 style escapes\n\t\t\t% URI encoded with %, JSON Pointer paths are URI encoded\n\n\t\t\t-A encodes all characters (0x0000-0xFFFF)\n\t\t\n\t\t  Encoding for all characters by default:\n\t\t\th hexadecimal value (UTF-8), raw, lowercase\n\t\t\tH hexadecimal value (UTF-8), raw, uppercase\n\t\t\to octal value (UTF-8) with ES2015 octal prefix "0o"\n\t\t\t6 binary value (UTF-16), 16 bits (all)\n\t\t\tB binary value (UTF-16), 8 bit wide (all)\n\t\t\tb binary value (UTF-8), 8 bit wide (all)\n\t\t\t\tBinary note: Numbers are converted to "positional" binary\n\t\t\t\tThis is NOT the internal representation\n\nData Alteration:\n\tData can be manipulated by applying a JSON Patch file or an inline statement (-X and -x)\n\tA single operation can be made with -o and a combination of -c -f -v\n\n\tJSON Patch document processing:\n\t  Create a file for common operations\n\t\t-x <inline JSON Patch> JSON Patch array expressed as a string\n\t\t-X <filespec to JSON Patch> a file path spec to a JSON Patch array\n\n\tJSON Patch and JSON Merge Patch operations:\n\t  A la carte operations can be crafted using -o -c -v and -f\n\n\t\tOperation (-o):\n\t\t\t-o "add" -p <path> -v <value>\n\t\t\t\tadd or replace value of an object property or add/insert array index (RFC7396)\n\t\t\t-o "replace" -p <path> -v <value>\n\t\t\t\treplace value of existing object key or array index (RFC6902)\n\t\t\t-o "remove" -p <path>\n\t\t\t\tremove specified path from the document (RFC6902)\n\t\t\t-o "move" -f <from> -p <path>\n\t\t\t\tmove a path to a new or existing path/node(RFC6902)\n\t\t\t-o "copy" -f <from> -p <path>\n\t\t\t\tcopy a path to a new or existing path/node (RFC6902)\n\t\t\t-o "test" -p <path> -v <value>\n\t\t\t\ttest if a path matches a value exactly (RFC6902)\n\t\t\t-o "mergepatch" <-v/-V <value> | -f <path>> [-p <path>]\n\t\t\t\tRFC7396 JSON Merge Patch operation: null values delete target key\n\t\t\t\tCan pull data from -f <path> instead a -v/-V value, can merge to -p (if JSON Path can be multiple)\n\t\t\t-o "merge" <-v/-V <value> | -f <path>> [-p <path>]\n\t\t\t\tNon-RFC7396 merging operation: null values are retained\n\t\t\t\tCan pull data from -f <path> instead a -v/-V value, can merge to -p (if JSON Path can be multiple)\n\t\t\t-o "diff" -v <value>\n\t\t\t\tGiven a value, compare with main document and produce a JSON Merge Patch document\n\t\t\t\t\n\t\tPath (-p):\n\t\t\t-p <path> the target path in JSON Pointer or JSON Path\n\n\t\tFrom (-f):\n\t\t\t-f <path> the "from" path (JSON Pointer or Path) for copy and move operations\n\n\t\tValue (-v/-V):\n\t\t\t-v <JSON value> inline JSON expression\n\t\t\t-V <filespec to JSON value> a file to use for the contents of value\n\t\t\t\t-s treat input from -v or -V as a string\n\t\t\t\t\nJSON Path Primer\n\t$ - the root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $\n\t.key - is the "child" operator for a property named 'key' in a JSON object\n\t..key - is a recursive operator that will find all properties name 'key' in the object\n\t['key] or ["key"] - quoted keys can accomodate any name, \\u Unicode escaping will be processed\n\t\t.. may precede a bracket, otherwise put them next to each other with no spaces, no dots\n\t.* ..* or [*] - the values of all the keys within an object or indices in an array\n\t[start:stop:step] - slice, behavior like Python, accepts integers (pos or neg),script and slice expressions, or empty\n\t[?(@.subKey == "This One!")] - filter expression substitute @ with the current object level\n\t\t  Comparison operators: can be ==, != and also regex =~ /string/ \n\t[(@.length/2)] - script expression returns value, good for arrays. Works in slices.\n\t[-] - for data alteration ops, used to add to the end of an array, borrowed from JSON Pointer\n\t[1] - an array index, integers only, cannot reference an numeric property name\n\t["a","b"] - a comma separated union can collect the values of multiple properties at the same level in an object\n\t\t Unions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices\n\n\tHorrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]\n\tFor a more examples: https://github.com/brunerd/jsonpath\n\nJSON Pointer Primer\n\t""\t\tan empty string represents the JSON document\n\t/\t\tis the root or next child node with a property named "" an empty string (JSONPath $[""])\n\t/key\t\tproperty named key in an object\n\t/1\t\tproperty named 1 in an object or a numeric index in an array\n\t/-\t\treferences the end of an array, where the next value goes (always non-existant in queries)\n\t~ in a property name must be escaped as ~0\n\t/ in a property name must be escaped as ~1\n\n\tExample: /JSON pointer/does/this/1/thing/well\n
 EOT
 
 #unset getopts variables each time
@@ -2208,7 +2419,7 @@ EOT
 #zsh does not like local declarations with += in the while loop
 local alterOp option options outputOpt depth valueArg
 
-while getopts ":KkDSQPAE:Ff:lNLOuo:i:aCIehdnqgGJzjsRrTtZ:v:V:x:X:p:" option; do
+while getopts ":cKkDSQPAE:Ff:lNLOuo:i:aCIehdnqgGJzjsRrTtZ:v:V:x:X:p:" option; do
 	case "${option}" in
 		
 		#output modes are exclusive
