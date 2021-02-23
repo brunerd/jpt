@@ -208,7 +208,7 @@ JSON Pointer Primer
 ```
 
 ### Requirements:
-bash or zsh  
-macOS 10.4+  
-Linux with jsc installed  
-Windows with Linux subsystem and jsc  
+bash or zsh on a supported OS:
+* macOS 10.4+  
+* Linux with jsc
+* Windows with Linux subsystem and jsc  
