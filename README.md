@@ -1,7 +1,7 @@
 # jpt
-JSON Power Tool: Retrieve and manipulate JSON data using [JSONPath](https://github.com/brunerd/jsonpath), [JSON Pointer](https://tools.ietf.org/html/rfc6901), [JSON Patch](http://tools.ietf.org/html/rfc6902), and [JSON Merge Patch](https://tools.ietf.org/html/rfc7386)
+JSON Power Tool: Query and manipulate JSON and JSON Text Sequences using [JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/), [JSON Pointer](https://tools.ietf.org/html/rfc6901), [JSON Patch](http://tools.ietf.org/html/rfc6902), and [JSON Merge Patch](https://tools.ietf.org/html/rfc7386).
 
-Written mostly in Javascript (ES5) and wrapped in a bit of shell, it can be used standalone or embedded in your bash/zsh scripts, requiring only `jsc` which has been standard on Macs since 10.4 and is widely available for Linux and even Windows with Linux subsystem installed.  
+Written in Javascript (ES5) and wrapped in a bit of shell, it can be used standalone or embedded in your bash/zsh scripts, requiring only `jsc` which has been standard on Macs since 10.4 and is widely available for Linux and even Windows with Linux subsystem installed.  
 
 It is a non-compiled script, so it can be easily studied, maintained, or modified. It avoids the need for code-signing and notarization on the Mac platform.  
 
@@ -28,183 +28,252 @@ jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Coming Soon","excited":
 
 ## Help File (-h)
 ```
-jpt - JSON Power Tool (https://github.com/brunerd/jpt)
+jpt (v1.0.0) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
 
 Arguments:
-
-[<query>] - JSONPath or JSON Pointer expression, optional. Returns entire document otherwise.
-		
-[<file>] - path to JSON file
+	[<query>] - JSONPath or JSON Pointer expression (optional), returns entire document otherwise.
+	[<file>] - path to JSON file
 
 Notes:
-	JSON is the default output mode, to change see Alternate Output Modes.
-	Single item arrays will be reduced to a single primitive JSON value (-a to inhibit)
-	File/stream input accepts both JSON and JSON Path Object Literal (-k to inhibit processing)
-	If no file specified, jpt will await input by Unix pipe, file redirection, or interactively by /dev/stdin until receiving Control-D
-	Comments, trailing commas, and hard-wrap newlines will be automatically and progressively stripped if initial JSON parsing fails
-	JSON Lines will be converted to an array for processing, queries, and output
-	Use -c to be made aware of either of these automatic recovery processes
-
-Options:
-	-h this help file
+	Default output mode is JSON (RFC8259/STD90)
+	Multiple JSON texts will be output as a JSON Text Sequence (RFC 7464) (use -M to change)
+	If no file is specified, jpt will await input by file redirection, Unix pipe, or via /dev/stdin (end with Control-D)
+	jpt accepts JSON, JSON text Sequences, and non-JSON mutations such as JSON5, NDJSON and jpt's own JSONPath Object Literals
+	JSON Text Sequences will be strictly parsed to RFC 7464 specs, non-JSON elements are only tolerated in single and concatenated JSON texts
+	Non-JSON elements are corrected automatically, if possible, before parsing (use -c for comments via stderr with an exit status of 1)
+	  Mostly JSON5 Rehabilitations:
+	    Unquoted object keys and single quoted strings are converted to JSON strings
+	    Additional Unicode whitespaces and paragraph separators are converted to normal spaces (0x20) and newlines (0x0A)
+	    Trailing commas are removed from object and array elements
+	    Explicit plus signs on numbers are removed, decimals without leading zeroes are restored
+	    Multi-line strings with escaped line breaks are reverted to standard JSON strings
+	      Literal tabs in strings are removed also
+	    Escaped character conversions: 
+		  \0 to null
+		  \v to '\u000c'
+	    JSON5 number type conversions: 
+		  NaN to null (use -8 to convert to "NaN" string)
+		  Inifinity to null (use -I to convert to "Infinity" string, with sign if specified)
+	    Single-line (//) and multi-line (/* */) style comments are removed
+		  Additionally multi-line XML (<!-- -->) and single line Shell (#), ASM (;), and Lua (--) comments are removed
+	
+General Options:
+	-h this help screen
 
 JSON Output Options:
-	-a always output an array for empty or single element arrays, do NOT reduce to a single JSON primitive value
-	-i "<number/string>"  indent number of spaces (0-10) or use a string for each level of indent
-	-u Unicode escape (\u) characters above 0x7F
+	-i "<number/string>" indent number of spaces (0-10) or use a <string> for each level of indent
+	-O Order property names in objects alphabetically
+	-u Unicode escape (\u) all characters above 0x7E
+
+Advanced JSON Output Options:
+	-a always output result in an array
+	-c comment on corrections to non-standard JSON via stderr output (with exit status of 1)
 	-F Flatten array output
-	-N Nesting reduction, single element arrays will be flattened, stopping if array length > 1
-	-O Order all property names alphabetically in all objects (array order is not changed)
+	-I Convert JSON5 +/-Infinity value to a string with signedness (otherwise converts to null)
+	-N Nested single element arrays are reduced
+	-8 Convert JSON5 NaN to a string (otherwise converts to null)
+	-/ Escape solidus / with a reverse solidus like \/, useful for HTML with embedded JSON encoded HTML
 
 Input Options:
-	-c "complain" via stderr and an exit code of 1 for comments, trailing commas, JSON Lines, or hard-wrapped data
-	-S String input, treat main input (file or stdin) as a JSON string
+	-D Detect truncation within objects and arrays in concatenated JSON only
+	-g path-only JSONPath Object Literals are assigned a value of null ("gratis nulls")
+	-G Guard previously defined JSONPath Object Literals from being modified by new statements
+	-H Help truncated JSON by closing up open strings, objects and arrays
+	-S Treat input as a JSON string
 
-Advanced Input Options:
-	-g "guess", use null values for JSON Path Object Literals with no assigned value (path-only)
-	-k kill processing of JSONPath Object Literals (see -L for outputting JPOL)
-	-G "Gripe" when importing contradictory JSONPath Object Literals and non-existant JSONPaths and JSON Patch ops
-	-I Inhibit type inference for JSONPath Object Literals that lack array and object initializers
+Multiple JSON Text Options:
+	-M "<value>" - options for working with multiple JSON texts
+		S - Output JSON Text Sequences strictly conforming to RFC 7464 (default)
+		N - Output newline delimited JSON texts
+		C - Output concatenated JSON texts
+		A - Gather JSON texts into an array, post-query and post-patching
+		a - Gather JSON texts into an array, pre-query and pre-patching 
 
-Alternate Output Modes:
-	-l output the length of the array, number of properties in an object, or length of string
+Alternate Output Modes (non-JSON):
+	-l output the length of the resulting array, object property count, or length of string
 
-	-j JSONPath path(s) matched by the query results
 	-J JSONPath path(s) of the object returned by the query
+	-j JSONPath path(s) matched by the query results
 
-	-r JSON Pointer path(s) matched by the query results
 	-R JSON Pointer path(s) of the object returned by the query
-		-E% encodes both -r and -R JSON Pointer paths in URI fragment style
+	-r JSON Pointer path(s) matched by the query results
+		Specifiying -EW or -Ew encodes both -r and -R JSON Pointer paths in URI fragment style
 
-	  -J and -R options:
+	  -J and -R path output options:
 		-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)
-		-K key/property name only (no preceding path)
-			-i "<value>" indent spaces (0-10) or character string for each level of indent
+		-K/-k print property (key) names and array indices only with no preceding path, default indent is 2
+			-i "<value>" indent spaces (0-10) or character for each level of indent
 
-	-L output JSON Path Object Literal notation of the resulting object
-		Format: <JSON Path>=<value>
-			<JSON Path> is simply Javascript expression syntax with $ as the object name
-				Example: $.key, $["key"], $['key'], or $[0] 
-			<value> is any valid JSON valid plus single quoted strings
+	-L JSONPath Object Literal notation output of the resulting object
+		JPOL Format: <JSONPath expression>=<JSON value>
+			<JSONPath expression> is simply Javascript expression syntax with $ as the object name
+				Example: $.key, $["key"], $['key'], or $[0]
+			<JSON value> is any valid JSON value (plus single quoted strings)
 				Example: 'string', "string", [], {}, 42, true, false, null
 
-	-L, -J, and -R options:
+	  JSONPath output options for -L -J and -j:
+		-d Use dot notation for object property names when possible, rather than bracket notation
+		-q Use single quotes for bracketed property names, string values remain JSON doublew quoted
+		-Q Use single quotes for BOTH bracketed property names AND string values (-L only)
+		-u encode characters above 7E with \u escape
+
+	  Output limiting options for -L, -J, and -R:
 		-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects
 		-Z "<int>" Depth
 			Combined with -L it will coalesce lower depth levels into a compound JSON object/array statement
-			Combined with -P, -J or -R will return only purely primitive nodes at or below the Z level
+			Combined with -P both -J and -R will return only purely primitive nodes at or below the Z level
 
-	JSON Path output options for -L -J and -j:
-		-d Use dot notation rather than bracket notation, when possible
-		-q Use single quotes for bracketed property names
-		-Q Use single quotes for both bracketed property names and string values (-L only)
-
-
-	-T output resulting data as Text aka "Trampling" by omitting all structures and property names
-		-e Print escaped characters literally: \b \f \n \r \t \\
-		-n Print null values as the string 'null'
+	-T textual output of all data (omits property names and indices)
+	  Options:
+		-e Print escaped characters literally: \b \f \n \r \t \v and \\ (escapes formats only)
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
+		-n convery null value to string 'null' (pre-encoding)
 
 		-E "<value>" encoding options for -T output:
-		  Encoding for character values above 0x007F (by default):
-			x hexadecimal value (UTF-8) with \x escapes 
-			O octal value (UTF-8), with \nnn octal escapes (shell style)
-			0 octal value (UTF-8) with \0nnn octal escapes (zsh style)
-			u Unicode value (UTF-16) with \u escapes
-			U Unicode Code Point with \U zsh escapes
-			E Unicode Code Point with \u{} ES2016 style escapes
-			% URI encoded with %, JSON Pointer paths are URI encoded
 
-			-A encodes all characters (0x0000-0xFFFF)
+		  Encodes string characters below 0x20 and above 0x7E with pass-through for all else:
+			x 	"\x" prefixed hexadecimal UTF-8 strings
+			O 	"\nnn" style octal for UTF-8 strings
+			0 	"\0nnn" style octal for UTF-8 strings
+			u 	"\u" prefixed Unicode for UTF-16 strings
+			U 	"\U "prefixed Unicode Code Point strings
+			E 	"\u{...}" prefixed ES2016 Unicode Code Point strings
+			W 	"%nn" Web encoded UTF-8 string using encodeURI (respects scheme and domain of URL)
+			w 	"%nn" Web encoded UTF-8 string using encodeURIComponent (encodes all components URL)
+
+			  -A encodes ALL characters
 		
-		  Encoding for all characters by default:
-			h hexadecimal value (UTF-8), raw, lowercase
-			H hexadecimal value (UTF-8), raw, uppercase
-			o octal value (UTF-8) with ES2015 octal prefix "0o"
-			6 binary value (UTF-16), 16 bits (all)
-			B binary value (UTF-16), 8 bit wide (all)
-			b binary value (UTF-8), 8 bit wide (all)
-				Binary note: Numbers are converted to "positional" binary
-				This is NOT the internal representation
+		  Encodes both strings and numbers with pass-through for all else:
+			h 	"0x" prefixed lowercase hexadecimal, UTF-8 strings
+			H 	"0x" prefixed uppercase hexadecimal, UTF-8 strings
+			o 	"0o" prefixed octal, UTF-8 strings
+			6 	"0b" prefixed binary, 16 bit _ spaced numbers and UTF-16 strings
+			B 	"0b" prefixed binary, 8 bit _ spaced numbers and UTF-16 strings
+			b 	"0b" prefixed binary, 8 bit _ spaced numbers and UTF-8 strings
 
-Data Alteration:
-	Data can be manipulated by applying a JSON Patch file or an inline statement (-X and -x)
-	A single operation can be made with -o and a combination of -c -f -v
+			  -U whitespace is left untouched (not encoded)
 
-	JSON Patch document processing:
-	  Create a file for common operations
-		-x <inline JSON Patch> JSON Patch array expressed as a string
-		-X <filespec to JSON Patch> a file path spec to a JSON Patch array
+Data Processing:
+	jpt can apply JSON Patch (RFC 6902), JSON Merge Patch (RFC 7396), and other operations to JSON text(s)
 
-	JSON Patch and JSON Merge Patch operations:
-	  A la carte operations can be crafted using -o -c -v and -f
+	JSON Patch processing:
+		-X "<filepath to JSON Patch>" a file path to a JSON Patch array (RFC 6902)
+		-x "<inline JSON Patch>" inline JSON Patch text (RFC 6902)
+		
+	JSON Patch Example (from RFC 6902):
+		 [
+			 { "op": "test", "path": "/a/b/c", "value": "foo" },
+			 { "op": "remove", "path": "/a/b/c" },
+			 { "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] },
+			 { "op": "replace", "path": "/a/b/c", "value": 42 },
+			 { "op": "move", "from": "/a/b/c", "path": "/a/b/d" },
+			 { "op": "copy", "from": "/a/b/d", "path": "/a/b/e" }
+		]
 
-		Operation (-o):
-			-o "add" -p <path> -v <value>
-				add or replace value of an object property or add/insert array index (RFC7396)
-			-o "replace" -p <path> -v <value>
-				replace value of existing object key or array index (RFC6902)
-			-o "remove" -p <path>
-				remove specified path from the document (RFC6902)
-			-o "move" -f <from> -p <path>
-				move a path to a new or existing path/node(RFC6902)
-			-o "copy" -f <from> -p <path>
-				copy a path to a new or existing path/node (RFC6902)
-			-o "test" -p <path> -v <value>
-				test if a path matches a value exactly (RFC6902)
-			-o "mergepatch" <-v/-V <value> | -f <path>> [-p <path>]
-				RFC7396 JSON Merge Patch operation: null values delete target key
-				Can pull data from -f <path> instead a -v/-V value, can merge to -p (if JSON Path can be multiple)
-			-o "merge" <-v/-V <value> | -f <path>> [-p <path>]
-				Non-RFC7396 merging operation: null values are retained
-				Can pull data from -f <path> instead a -v/-V value, can merge to -p (if JSON Path can be multiple)
-			-o "diff" -v <value>
-				Given a value, compare with main document and produce a JSON Merge Patch document
+	Single operations for JSON Patch, JSON Merge Patch, and others can be crafted using -o plus -p (path) and possibly -f (from) or -v/-V (value)
+
+		-o "<operation>":
+		 [JSON Patch Operations]
+		  add
+			-o add -p "<path>" -v "<value>"
+				add/replace value in object or insert value into array index (RFC 6902)
+		  replace
+			-o replace -p "<path>" -v "<value>"
+				replace value of existing object property (key) or array index (RFC 6902)
+		  remove
+			-o remove -p "<path>"
+				remove specified path from the document (RFC 6902)
+		  move
+			-o move -f "<from>" -p "<path>"
+				move a path to a new or existing path/node(RFC 6902)
+		  copy
+			-o copy -f "<from>" -p "<path>"
+				copy a path to a new or existing path/node (RFC 6902)
+		  test
+			-o test -p "<path>" -v "<value>"
+				test if a path matches a value exactly (RFC 6902), return 0 if true, 1 if false
+
+		 [Other Operations]
+		  diff
+			-o diff -v "<value>"
+				Given a value, compare with JSON text and produce a JSON Merge Patch (RFC 7396) document
+		  mergepatch
+			-o mergepatch (-v/-V "<value>" || -f "<path>") [-p <path>]
+				JSON Merge Patch (RFC 7396) operation: null values delete target object property
+				Can pull data from -v/-V "<value>" OR -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)
+		  merge
+			-o merge (-v/-V "<value>" || -f "<path>") [-p "<path>"]
+				Non-RFC 7396 merging operation, object properties with null values are NOT removed
+				Can pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)
+		  merge0
+			-o merge0 (-v/-V "<value>" || -f "<path>") [-p "<path>"]
+				Merge object properties that DO NOT intersect with source JSON
+				Can pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)
+		  merge1
+			-o merge1 (-v/-V "<value>" || -f "<path>") [-p "<path>"]
+				Merge object properties that intersect with source JSON
+				Can pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)
 				
-		Path (-p):
-			-p <path> the target path in JSON Pointer or JSON Path
+		-p "<path>":
+			-p "<path>" the target path expressed in JSON Pointer (RFC 6901) or JSONPath
 
-		From (-f):
-			-f <path> the "from" path (JSON Pointer or Path) for copy and move operations
+		-f "<from path>":
+			copy and move require a JSON Pointer (RFC 6901) or JSONPath expression
 
-		Value (-v/-V):
-			-v <JSON value> inline JSON expression
-			-V <filespec to JSON value> a file to use for the contents of value
-				-s treat input from -v or -V as a string
+		-v/-V "<value>":
+			-v "<JSON value>" is a single JSON text
+			-V "<filespec to JSON value>" is a file path to a single JSON text
+		  Options for -v/-V:
+			-s treat input as a string
 				
-JSON Path Primer
-	$ - the root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $
-	.key - is the "child" operator for a property named 'key' in a JSON object
-	..key - is a recursive operator that will find all properties name 'key' in the object
-	['key] or ["key"] - quoted keys can accomodate any name, \u Unicode escaping will be processed
-		.. may precede a bracket, otherwise put them next to each other with no spaces, no dots
-	.* ..* or [*] - the values of all the keys within an object or indices in an array
-	[start:stop:step] - slice, behavior like Python, accepts integers (pos or neg),script and slice expressions, or empty
-	[?(@.subKey == "This One!")] - filter expression substitute @ with the current object level
-		  Comparison operators: can be ==, != and also regex =~ /string/ 
-	[(@.length/2)] - script expression returns value, good for arrays. Works in slices.
-	[-] - for data alteration ops, used to add to the end of an array, borrowed from JSON Pointer
-	[1] - an array index, integers only, cannot reference an numeric property name
-	["a","b"] - a comma separated union can collect the values of multiple properties at the same level in an object
-		 Unions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices
+JSONPath Primer
+	$
+		the root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $
+	.key or ['key']
+		a "child" operator for an object property named 'key' in a JSON object
+	..key or ..['key']
+		is a recursive operator that will find all properties named 'key' within the object
+	['key name'] or ["key \ud83d\udd11"]
+		property names with spaces or escaped values MUST use bracket notation
+	.* or [*]
+		* returns the values of all the keys within an object or all indices in an array
+	[start:stop:step]
+		slice operation for arrays, accepts pos/neg integers, script and filter expressions, or leave empty
+	[?(@ >= 3 && @ <= 10 )] or [?(@.key == "string" || @['key2'] == "string2")] or the off-spec [?(@name =~ /key.*/)], etc...
+		filter expressions can return one or more matching nodes
+		@ is the current object, dot and bracket notation can be used to query child nodes
+		Use logical operators like: == (equal), != (not equal), > (greater than), < (less than), >= (greater or equal), <= (less or equal)
+		Multiple criteria can be evaluated with && (AND) and || (OR). Regular expressions can also be used: '=~ /regexp/'
+		@.length is the length of an array or string
+		@name is the current property name (an off-spec but useful quirk of the original Goessner code)
+	[(@.length/2)]
+		script expression, returns a single value, use as an array index selector
+	[1] or [-1]
+		array index, integers only, positive starts at the beginning, negative references from the end 
+	["-"]
+		The nonexistent array member after the last array element
+		Use with data alteration operations, will always be empty for queries of arrays
+		Akin to /- in JSON Pointer, if used with an object simply looks for a key named "-"
+	["a","b"]
+		union, a comma separated list of expressions values of multiple properties at the same level in an object
+		Unions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices
 
 	Horrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]
 	For a more examples: https://github.com/brunerd/jsonpath
 
-JSON Pointer Primer
+JSON Pointer (RFC 6901) Primer
 	""		an empty string represents the JSON document
 	/		is the root or next child node with a property named "" an empty string (JSONPath $[""])
 	/key		property named key in an object
 	/1		property named 1 in an object or a numeric index in an array
-	/-		references the end of an array, where the next value goes (always non-existant in queries)
-	~ in a property name must be escaped as ~0
-	/ in a property name must be escaped as ~1
+	/-		the nonexistent array member after the last array element, use with data alteration operations
+	~		in a property name must be escaped as ~0
+	/		in a property name must be escaped as ~1
 
 	Example: /JSON pointer/does/this/1/thing/well
-
 ```
 
 ### Requirements:
