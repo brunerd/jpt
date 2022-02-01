@@ -10,7 +10,7 @@ See my blog for articles, examples, and musing on the jpt: https://www.brunerd.c
 ## Examples
 Please see the [brunerd JSONPath](https://github.com/brunerd/jsonpath) GitHub page for an *extensive* list of example JSONPath queries.
   
-[JSONPath](https://github.com/brunerd/jsonpath) has a richly expressive query syntax that can do things JSON Pointer can't do:
+[JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/) has a richly expressive query syntax that can do things JSON Pointer can't do:
 ```
 jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Coming Soon","excited":"I can\'t wait!"}}}' 
 [
