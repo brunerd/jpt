@@ -6,9 +6,9 @@
 # FUNCTIONS #
 #############
 
-#v1.0.0
+#v1.0.1
 function jpt #([options] [query] [fileArg])
-{
+(
 : <<-LICENSE_BLOCK
 jpt - JSON Power Tool (https://github.com/brunerd/jpt)
 Copyright (c) 2020 Joel Bruner (https://github.com/brunerd)
@@ -246,6 +246,7 @@ function jsonPath(obj, expr, arg) {
 
 //workaround for jsc print() limit of 0x2AAAAAAA (dec: 715827882) ~682.6 MiB
 function jscChunkPrint(resultText) {
+	//cdebug("jscChunkPrint")
 	var breakIndex,windowEnd,startBytes=0;
 	var totalBytes=resultText.length;
 	var delimiters=[ '\n', '","' , '",' , ',"' , '},{' ,'":"' , '":{' ]
@@ -268,6 +269,8 @@ function jscChunkPrint(resultText) {
 //render JSON into alternate textual forms
 //mutated from: https://davidwells.io/snippets/traverse-object-unknown-size-javascript
 function renderObject(obj,pathName,option,level) {
+	//cdebug("arguments: " + JSON.stringify(arguments,null,2))
+	//cdebug("renderObject()\n" + " obj: "+ JSON.stringify(obj,null,2) +"\n pathName: " + pathName + "\n option: " + JSON.stringify(option,null,0) + "\n level: " + level)
 	option = option || {}
 	option.maxDepth = (option.maxDepth === undefined || option.maxDepth < -1 ) ? -1 : option.maxDepth
 
@@ -278,17 +281,22 @@ function renderObject(obj,pathName,option,level) {
 
 	//indents the line based on the -i value plus the level we are at
  	const makeIndent = function(spaceArg,level) {
+ 		//cdebug("spaceArg: '" + spaceArg +"', level: " + level ) 		
 		var indentComp = '';
 		//create the string component for each indent level
 		if (spaceArg.constructor === Number)  { for(var i=0;i<spaceArg;i++){ indentComp+=" " } }
 		else { indentComp=spaceArg }
+		//cdebug("indentComp: '" + indentComp + "'")		
 		//create the final indent string
 		for(var i=0;i < level; i++) { indent+=indentComp }		
+		//cdebug("Final Indent: '" + indent + "'\n")
 		return indent;
  	}
 
 	//keep track of our depth level
 	if (isNaN(level)) {var level=0} else {level++}
+	//cdebug("pathName: " + pathName)
+	//cdebug("level: " + level)
 	//-K key name is only for -R and -J  output
 	if(option.K && !(option.J || option.R)) {option.K=false}
 
@@ -305,6 +313,7 @@ function renderObject(obj,pathName,option,level) {
 
 	//ARRAY
 	if (obj.constructor === Array) {
+		//cdebug("renderObject: obj.constructor === Array")
 		if ((option.J || (option.R)) && !option.P && (pathName || pathName === "")) { 
 			result.push(indent + pathName + (option.C ? ": Array" : '' )) 
 		}
@@ -328,11 +337,16 @@ function renderObject(obj,pathName,option,level) {
 		}
 		//if -L initialize the object
 		else if((pathName || pathName === "") && !option.P){
+			//cdebug("renderObject, //OBJECT, init")
+			//cdebug("level: " + level)
+			//cdebug("option.maxDepth: " + option.maxDepth)
 			result.push(indent + pathName + (option.K ? (!option.C ? '' : typeString ) : level === option.maxDepth ? '=' + JSON.stringify(obj,null,0) : '={}' ))
 		}
 
 		if(option.maxDepth === -1 || level < option.maxDepth) {
+			//cdebug("renderObject, //OBJECT, walk")
 			for (var key in obj) {
+				//cdebug("renderObject() key: " + JSON.stringify(key,null,0))
 				if (obj.hasOwnProperty(key)) {				
 					//-R -J and -L (optionally with -P -K)
 					if(pathName || pathName === ""){
@@ -358,6 +372,7 @@ function renderObject(obj,pathName,option,level) {
 								var keyEncodeRegex=/[\u0000-\u001f\u007f|\\|"|']/g
 							}
 							var keyEsc=key.replace(keyEncodeRegex, function(chr) { switch(chr) { case ' ': return " "; case '\b': return "\\b"; case '\f': return "\\f"; case '\n': return "\\n"; case '\r': return "\\r"; case '\t': return "\\t"; case '\\': return "\\\\"; case "\"": return (keyQuotes === "'" ? "\"" : "\\\"" ); case '\'': return (keyQuotes === "'" ? "\\'" : "'" ); default: return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4);}});
+							//cdebug("renderObject() keyEsc: " + JSON.stringify(keyEsc,null,0))
 							if(option.K && ! option.L) {
 								//raw output
 								//-k unquoted (but escape whitespace as if it is, either double or single with -Q/-q)
@@ -383,11 +398,14 @@ function renderObject(obj,pathName,option,level) {
 	} 
 	//VALUE (string, number, boolean, or null (as string) )
 	else {	
+		//cdebug("renderobject() VALUE")	
 		//-T
 		if(option.T) {
+			//cdebug("-T Text processing")
 			//put result in an array escape whitespace chars, if -e is on escape here (we can't do it later because of indents)
 			//if null was turned into a string do not futher encode
 			if (typeof obj === "string" && ! isNull){
+				//cdebug("String")
 				//-EW encodeURI (repects protocol scheme and domain)
 				if(option.encoding.W && !option.A){
 					obj = encodeURI(obj)
@@ -431,17 +449,22 @@ function renderObject(obj,pathName,option,level) {
 					//loop through each character
 					for (var i=0; i < obj.length; i++) {
 						var charcode = obj.charCodeAt(i);
+						//cdebug("obj.charCodeAt("+i+"): " + charcode)
+						//cdebug("obj["+i+"]: " + JSON.stringify(obj[i]) )
 
 						if (charcode < 0x80) {
+							//cdebug("charcode.toString("+ stringBase +"): " + charcode.toString(stringBase))
 							//if whitespace and NOT -A and using an escaped encoding. 
 							//Encode with \b \f \n \r \t \v (\v is not JSON fyi)
 							if (/[\s|\b|\\]/.test(obj[i]) && ! option.A && (/^\\/.test(escStr) || !option.encoding)){
+								//cdebug("Encode whitespace or \\ at obj["+i+"]): " + JSON.stringify(obj[i]))
 								//escape all whitespace with literal strings
 								if(option.e) {
 									tempArray.push(obj[i].replace(/[\s|\b]/g, function(chr) { switch(chr) { case ' ': return " "; case '\b': return "\\b"; case '\f': return "\\f"; case '\n': return "\\n"; case '\r': return "\\r"; case '\t': return "\\t"; case '\v': return "\\v";}}))
 								}
 								//passthrough (this allows binary to use whitepsace switch)
 								else {
+									//cdebug("passthrough at i: " + i)
 									tempArray.push(obj[i]);
 								}
 							}
@@ -458,10 +481,12 @@ function renderObject(obj,pathName,option,level) {
 							}
 							//pass-thru unencoded
 							else {
+								//cdebug("pass-thru: " + i)
 								tempArray.push(obj[i]);
 							}						
 						}
 						else if(! option.encoding){
+							//cdebug("No encoding passthrough")
 							tempArray.push(obj[i]);
 						}
 						//utf-16 0x80 and above, easy
@@ -506,6 +531,7 @@ function renderObject(obj,pathName,option,level) {
 							}
 						}
 					}
+					//cdebug("tempArray:\n" + JSON.stringify(tempArray,null,2))
 					//join temp array and 
 					obj=tempArray.join("");
 					//just do the uppercase all at once 
@@ -513,8 +539,11 @@ function renderObject(obj,pathName,option,level) {
 				}				
 			}
 			else if(obj.constructor === Number){
+				//cdebug("Number (raw): " + obj)
+				//cdebug("Number (JSON.stringify): " + JSON.stringify(obj,null,0))
 				//detmine the signedness
 				if (Math.sign(obj) === -1){					
+					//cdebug("Negative")
 					//add this BEFORE encoding
 					var possibleNegative="-"
 					//make positive
@@ -523,8 +552,11 @@ function renderObject(obj,pathName,option,level) {
 				else {
 					var possibleNegative=""
 				}
+				//cdebug("0obj: " + obj)
+				//cdebug("possibleNegative: " + possibleNegative)
 				if(obj === Infinity){
 					if(option.I) {
+						//cdebug("Option I")
 						obj= possibleNegative + "Infinity"
 					}
 					else if (option.n){
@@ -535,6 +567,7 @@ function renderObject(obj,pathName,option,level) {
 					}
 				}
 				else if(option.encoding.b || option.encoding.B || option.encoding['6']) {
+					//cdebug("Binary")
 					//b and B are the same 8 bit wide, 6 will need 16 bit wide
 					obj = Math.floor(obj).toString(2)
 					if(option.encoding.b){
@@ -561,6 +594,9 @@ function renderObject(obj,pathName,option,level) {
 					}
 					//nearest mutliple
 					var widthMultiple=obj.length + padding
+					//cdebug("Padding: " + padding)
+					//cdebug("Width: " + width)
+					//cdebug("widthMultiple: " + widthMultiple)
 					//pad string to multiple length and trim
 					if (option.encoding.b) { 
 						obj = ("0000000" + obj).slice(-widthMultiple)
@@ -572,6 +608,7 @@ function renderObject(obj,pathName,option,level) {
 					}
 					//delineate string with _ according to delineation
 					for(var c=0, tempObj="";c<obj.length;c=c+delineation){
+						//cdebug("c: " + c)
 						var tempObj = tempObj + (c === 0 ? "" : "_") + obj.slice(c,c+delineation)
 					}
 					//reassign obj to new string
@@ -594,6 +631,7 @@ function renderObject(obj,pathName,option,level) {
 			}
 			//final result is single indented JSON object in an array, stringified in case of Infinity
 			result=[ indent + obj ]
+			//cdebug("result: " + result)
 		}
 		//if -R or -J
 		else if( (option.R || option.J) ) { 
@@ -604,7 +642,9 @@ function renderObject(obj,pathName,option,level) {
 		else {			
 			if (typeof obj === "string" && !isNull) {
 				//escape whitespace
+				//cdebug("-L obj: " + JSON.stringify(obj,null,2))
 				var thisString = obj.replace((option.u ? /[\u0000-\u001f\u007f-\uffff|\\|"|']/g : /[\u0000-\u001f\u007f|\\|"|']/g), function(chr) { switch(chr) { case '\b': return "\\b"; case '\f': return "\\f"; case '\n': return "\\n"; case '\r': return "\\r"; case '\t': return "\\t"; case '\\': return "\\\\"; case '"': return (stringQuotes === "'" ? "\"" : "\\\"" ); case '\'': return (stringQuotes === "'" ? "\\'" : "'" ); default: return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).slice(-4);}});
+				//cdebug("thisString: " + JSON.stringify(thisString,null,2))
 				result=[ pathName + '=' + stringQuotes + thisString + stringQuotes ]
 			}
 			//booleans and numbers don't get quotes, nor does a string with isNull set
@@ -621,17 +661,24 @@ function objectifyExpressions(array,option)
 	//option.allowExpressions = allow JSONPath expressions
 	//option.expandTrailingUnion = expand a union expression into discreet
 	//option.disallowData - error if data is found along with path expression
+	//cdebug("objectifyExpressions()")
+	//cdebug("option:\n" + JSON.stringify(option,null,2))
+	//cdebug("array:\n" + JSON.stringify(array,null,2))
 	try {
 		//go through the array of literals, remove any empty lines
 		array = array.map(function(expr){
 				var pathStack=[]
 				var baldRecursion=false				
+				//cdebug("expr (raw): " + expr)
+				//cdebug("expr.length: " + expr.length)
 				//trim any leading/trailing whitespace
 				expr=expr.replace(/^\s*/,"").replace(/\s*$/,"")
+				cdebug("!expr: " + JSON.stringify(expr) )
 				//parse as JSON Pointer if empty string or begins with /
 				if((expr === "" || expr[0] === "/") ){
 					var assignmentLocations=[]
 					option.allowExpressions=false
+					cdebug("JSON Pointer: " + expr)
 					//split into array
 					pathStack = expr.split('/')
 					//throw out first entry
@@ -640,14 +687,17 @@ function objectifyExpressions(array,option)
 					pathStack = pathStack.map(function (f){ 
 						return f.replace(/~1/g,"/").replace(/~0/g,"~") })
 					if(pathStack[pathStack.length-1] === "-"){ pathStack[pathStack.length-1] = {"expression":"-"} }
+					//cdebug("pathStack:\n" + JSON.stringify(pathStack,null,2))
 				}
 				//if $ then process as JSONPath
 				else if(expr[0] === "$"){
 					//reverse expr to use regex negative lookahead to ignore
 					var revExpr = expr.split('').reverse().join('')
+					//cdebug("revExpr : " + revExpr)
 					// replace everything in quotes "..." '...' and regexes =~ /.../ with spaces
 					// replace assignment operators with spaces: == === != !== <= >= =~
 					var tempExpr=revExpr.replace(/(["'])(.*?)\1(?!\\)|(\/.*?\/(?!\\)\s*~=)|=~*\s(\/.*?\/(?!\\))|(={2,3})[^=]|[^=](==?!)|[^=]((?:=!|=<|=>|~=))/g, function(a){return a.replace(/./g, " ")})
+					//cdebug("tempExpr: " + tempExpr)
 					var assignmentRegex=/=/g
 					var assignmentLocations=[]
 					var lastAssignmentLastIndex=0
@@ -656,6 +706,7 @@ function objectifyExpressions(array,option)
 					//check if there is an assignment operator =
 					do {
 						assignmentMatch=assignmentRegex.exec(tempExpr)
+						//cdebug("assignmentRegex.lastIndex:\n" + assignmentRegex.lastIndex);
 						//break if stuck or not found
 						if (assignmentMatch === null || assignmentRegex.lastIndex === 0|| lastAssignmentLastIndex === assignmentRegex.lastIndex) { 
 							break ;
@@ -664,6 +715,8 @@ function objectifyExpressions(array,option)
 						lastAssignmentLastIndex = assignmentRegex.lastIndex
 						assignmentLocations.unshift(lastAssignmentLastIndex)
 					} while(assignmentRegex.lastIndex !== 0 && assignmentRegex.lastIndex !== tempExpr.length)
+					//cdebug("assignmentLocations: " + JSON.stringify(assignmentLocations,null,2))				
+					//cdebug("assignmentLocations.length: " + assignmentLocations.length)					
 					//throw an error if we are NOT allowing JSON Path object literals and we get something
 					if(option.disallowData && assignmentLocations.length){
 						throw new SyntaxError("Data assignment (=) not allowed in path specification")
@@ -675,8 +728,10 @@ function objectifyExpressions(array,option)
 
 					//trim expr to ONLY have path and reverse it to be revExpr
 					if(expr.length - lastAssignmentLastIndex > 0){
+						//cdebug("expr (pre-trim): " + expr)
 						//expr = expr.substring(0,expr.length - lastAssignmentLastIndex).split('').reverse().join('')
 						var revExpr = expr.substring(0,expr.length - lastAssignmentLastIndex).split('').reverse().join('')
+						//cdebug("revExpr (expr trimmed): " + revExpr)
 					}
 					//this may never be reachable
 					else{
@@ -742,11 +797,13 @@ function objectifyExpressions(array,option)
 								}
 								//reverse things back
 								L2Match = L2Match.map(function(s){return (!s ? s : s.split('').reverse().join(''))})
+								//cdebug("L2Match: " + JSON.stringify(L2Match,null,0))
 								//'key' or "key" - (["'])(.*?)\1(?!\\)
 								if(L2Match[2] === ''){ subArray.unshift(L2Match[2]) }
 								else if(L2Match[2]){
 									if (needsDelimiter) { Level2Regex.lastIndex=subLastLastIndex; break; } else { needsDelimiter=true }
 									if (intraSlice) { break }
+									//cdebug("L2Match[2]: " + JSON.stringify(L2Match[2],null,0))
 									//depending on the quoting method unescape/re-escape then JSON parse
 									pendingData.unshift(JSON.parse('"'+(L2Match[1] === "'" ? L2Match[2].replace(/\\'/g,"'").replace(/\"/g,"\\\"") : L2Match[2])+'"',null,0))
 								}
@@ -941,17 +998,23 @@ function objectifyExpressions(array,option)
 				else {
 					throw new SyntaxError("Unrecognized query syntax: " + expr)
 				}
+				//cdebug("pathStack:\n" + JSON.stringify(pathStack,null,2))
+				//cdebug("pathStack.length: " + pathStack.length)
 				//now that we know our path context...
 				//if only one equal = create assignmentData, assignmentData_obj
 				if (assignmentLocations.length === 1){
+					//cdebug("assignmentLocation (reversed): " + (expr.length - lastAssignmentLastIndex+1))
+					//cdebug("prev char: " + expr.charAt(expr.length - lastAssignmentLastIndex-1))
 					//catch special case if odd numbered === assignment operator used, skip it, == will fail too
 					if(expr.charAt(expr.length - lastAssignmentLastIndex-1) === "="){ return ''}
 
 					//get the string representation, we will attempt to parse it later...
 					var assignmentData = expr.substring(expr.length - lastAssignmentLastIndex + 1, expr.length)
+					//cdebug("assignmentData: " + assignmentData)
 
 					//detect single quotes ' and change to " escaping if necessary, to parse as JSON string
 					if(assignmentData.match(/^'(.*)'$/)){
+						//cdebug("'single quote match'")
 						//un-escape all single and double quotes (to be sure), then escape single quotes, wrap in double quotes
 						assignmentData='"' + assignmentData.substring(1,assignmentData.length-1).replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'
 					}
@@ -964,23 +1027,34 @@ function objectifyExpressions(array,option)
 						//return ''
 					}
 				}
+				//cdebug("assignmentData: " + assignmentData)
 				//return the pathStack object not a re-stringified version
 				//if we have a pathStack, it's last member is an array and the option to expand it is on
 				if(pathStack.length && pathStack[pathStack.length-1].constructor === Array && option.expandTrailingUnion){
+					//cdebug("expandTrailingUnion")
 					var returnObject=[]
 					var basePath=pathStack.slice()
+					//cdebug("basePath: " + JSON.stringify(basePath,null,0))
 					var childUnion=basePath.pop()
+					//cdebug("basePath: " + JSON.stringify(basePath,null,0))
+					//cdebug("childUnion: " + JSON.stringify(childUnion,null,0))
 					for(var i=0; i<childUnion.length; i++){
 						var thisChild=childUnion[i]
+						//cdebug("thisChild: " + JSON.stringify(thisChild,null,0))
 						var tempBasePath=basePath.slice()
+						//cdebug("tempBasePath: " + JSON.stringify(tempBasePath,null,0))
 						tempBasePath.push(thisChild)
 						returnObject.push({"path":tempBasePath,"data":assignmentData_obj})
+						//cdebug("returnObject (loop): " + JSON.stringify(returnObject,null,2))
 					}
+					//cdebug("returnObject: " + JSON.stringify(returnObject,null,2))
 					return returnObject
 				}
 				else {
+					//cdebug("pathStack (return): " + JSON.stringify(pathStack))
 					//return pathStack
 					var returnObject={"path":pathStack,"data":assignmentData_obj}
+					//cdebug("returnObject: " + JSON.stringify(returnObject,2,null))
 					return returnObject
 				}
 
@@ -1505,6 +1579,7 @@ function diff(oldValue, newValue) {
 
 //Copyright (c) 2016 Kris Nye - MIT License
 function merge(target, patch, deleteNull,mergeOption) {
+	cdebug("MERGE:\n target: " + JSON.stringify(target,null,0) + "\n patch: " + JSON.stringify(patch,null,0) + "\n mergeOption: " + JSON.stringify(mergeOption,null,0))
 
     // length: null when targetting an Array indicates to convert Array to Object.
     if (Array.isArray(target) && patch != null && patch.length === null) {      
@@ -1517,6 +1592,7 @@ function merge(target, patch, deleteNull,mergeOption) {
             return JSON.parse(JSON.stringify(patch));
         }
         else {
+        	cdebug("return patch")
             return patch;
         }
     }
@@ -1558,10 +1634,12 @@ function ingestLiterals(valueString,option,$)
 {
 	//turn into array, remove empty lines
 	var literalStrings = valueString.split('\n').filter(function(p) { return p != null && p != ''; })	
+	//cdebug("literalStrings raw:\n" + JSON.stringify(literalStrings,null,2))
 	//ingest the JSON Path Literals without using eval()
 	//get back object representation of literals
 	try { var literalObjects = objectifyExpressions(literalStrings) } catch(e){throw new Error(e)}	
 
+	//cdebug("literalObjects:\n" + JSON.stringify(literalObjects,null,2))
 	//get back an array of objects containing keys "path" and (perhaps) "data"
 	//path is an array of String or Number elements
 	//loop through each literal object in the literalObjects array
@@ -1572,23 +1650,33 @@ function ingestLiterals(valueString,option,$)
 
 		//each time back at the top
 		var thisNode=$
+		//cdebug("$ (i="+i+"): " + JSON.stringify($))
+		//cdebug("thisNode: " + JSON.stringify(thisNode))
+		//cdebug("thisPath: " + JSON.stringify(thisPath))
+		//cdebug("thisData: " + JSON.stringify(thisData))
+		//cdebug("thisPath.length: " + thisPath.length)
+		//cdebug("thisLitObj:\n" + JSON.stringify(thisLitObj,null,2))		
 		//no length means root
 		if(!thisPath.length){
+			//cdebug("1 if(!thisPath.length)")
 			if ($ !== undefined && option.G) {
 				printErr("Guarding $ from root overwrite, line: " + (i+1))
 			}
 			else {
 				if(thisData !== undefined) { 
+					//cdebug("$=thisData")					
 					$=thisData
 				}
 				//gratis nulls
 				else if(option.g) { 
+					//cdebug("$=null")					
 					$=null
 				}
 			}
 		}
 		else {
 			//make sure we have a foundation to build off of
+			//cdebug("2 else")
 			//if we are nothing or a key name is specified but we're an array
 			if (thisPath[0].constructor === String && ($ === undefined || $ === null || $.constructor !== Object)){
 				if ($ !== undefined && option.G) {
@@ -1597,6 +1685,7 @@ function ingestLiterals(valueString,option,$)
 				//Keep $["-"] from changing array into an object
 				else if (thisPath[0] !== "-"){
 					//initialize ourselves to be what's expected
+					//cdebug("$={}")
 					$={}
 					thisNode=$			
 				}
@@ -1608,6 +1697,7 @@ function ingestLiterals(valueString,option,$)
 				}
 				else {
 					//initialize ourselves to be what's expected
+					//cdebug("$=[]")
 					$=[]
 					thisNode=$			
 				}
@@ -1615,32 +1705,41 @@ function ingestLiterals(valueString,option,$)
 
 			//walk down the path
 			for(var j=0; j <= thisPath.length-1; j++){
+				//cdebug("j: " + JSON.stringify(j))
 
 				//if an array and $["-"] or $[-]  in the mix (although latter type should go)
 				if (thisNode.constructor === Array && (thisPath[j].expression === "-" || thisPath[j] === "-")){
 					var thisKeyName=thisNode.length
+					//cdebug("resolved $[\"-\"] thisKeyName: " + thisNode.length)
 				}
 				else {
 					var thisKeyName=thisPath[j]
 				}
+				//cdebug("thisKeyName ->: " + JSON.stringify(thisKeyName))
+				//cdebug("thisData: " + JSON.stringify(thisData))
 
 				//if no data and not -g break early
 				if((thisData === undefined && !option.g) || thisKeyName === undefined) { 
+					//cdebug("BREAK: No node data")
 					break 
 				}
 
 				//if we are at the end (we step one above), make the assignment
 				if(j === thisPath.length-1){
+					//cdebug("At the end: j=" + j + ", thisPath.length=" + thisPath.length)
 					if (thisNode[thisKeyName] !== undefined && option.G) {
 						printErr("Guarding against re-assignment of '" + thisKeyName + "' to: " + JSON.stringify(thisData))
 					}
 					else { 
 						//if this is not a path only and we have some data
 						if(thisData !== undefined) { 
+							//cdebug("thisNode[thisKeyName]=thisData")
+							//cdebug("thisNode["+ thisKeyName + "]=thisData")
 							thisNode[thisKeyName]=thisData
 						}
 						//otherwise if path only and -g (gratis nulls/guess)
 						else if(option.g) { 
+							//cdebug("thisNode[thisKeyName]=null")					
 							thisNode[thisKeyName]=null
 						}
 					}
@@ -1652,10 +1751,12 @@ function ingestLiterals(valueString,option,$)
 						//look ahead to the NEXT member type after this one
 						if (thisPath[j+1].constructor === String){
 							//initialize ourselves to be what's expected
+							//cdebug("thisNode[thisKeyName]={}")
 							thisNode[thisKeyName]={}
 						}
 						//or again if we are nothing or a number is specified but we are an object
 						else if (thisPath[j+1].constructor === Number){
+							//cdebug("thisNode[thisKeyName]=[]")
 							thisNode[thisKeyName]=[]
 						}
 						//else it could also be an expression				
@@ -1664,10 +1765,12 @@ function ingestLiterals(valueString,option,$)
 					else {
 						if (thisPath[j+1].constructor === String && (thisNode[thisKeyName] === undefined || thisNode[thisKeyName] === null || thisNode[thisKeyName].constructor !== Object)){
 						//initialize ourselves to be what's expected
+						//cdebug("$={}")
 						thisNode[thisKeyName]={}
 						}
 						//or again if we are nothing or a number is specified but we are an object
 						else if (thisPath[j+1].constructor === Number && (thisNode[thisKeyName] === undefined || thisNode[thisKeyName] === null || thisNode[thisKeyName].constructor !== Array)){
+							//cdebug("$=[]")
 							thisNode[thisKeyName]=[]
 						}
 					}				
@@ -1676,6 +1779,8 @@ function ingestLiterals(valueString,option,$)
 				}
 			}
 		}				
+		//cdebug("$ so far:\n" + JSON.stringify($,null,2))
+		//cdebug("thisNode so far:\n" + JSON.stringify(thisNode,null,2))
 	}	
 	//JSON stringify and parse to fill in any undefined array holes with nulls
 	return $ !== undefined ? JSON.parse(JSON.stringify($)) : []
@@ -1683,6 +1788,10 @@ function ingestLiterals(valueString,option,$)
 
 function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatchArg)
 {	
+	cdebug(" valueArg: " +JSON.stringify (valueArg,null,2))
+	cdebug(" fromArg: " +JSON.stringify (fromArg,null,2))
+	cdebug(" pathArg: " +JSON.stringify (pathArg,null,2))
+	cdebug(" alterObject, i: " + i)	
 	//if not -x or -X patch operations we are using individual -o -p -v -f values
 	//validate those and build pathArgValidated
 	if(!(option.x || option.X)) { 
@@ -1691,6 +1800,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 		//-o - operation
 		if(Object.keys(option.opArg)[0] !== undefined) { 
 			opArg = Object.keys(option.opArg)[0]
+			cdebug("opArg: " + opArg)
 		} 
 		//-v or -V - value	
 		if(valueArg !== undefined){
@@ -1699,6 +1809,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 				try { valueArg = readFile(valueArg) } 
 				catch(error) { throw new Error(error) };
 			}
+			//cdebug("valueArg (before): " + JSON.stringify(valueArg))
 			//if -s specified, treat contents of valueArg as JSON string , escape all special characters
 			if(option.s) { 
 				//replace and escape required characters
@@ -1719,6 +1830,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 			//attempt to parse the supplied JSON
 			try { valueArg = JSON.parse(valueArg) } 
 			catch(e){ 
+				cdebug("-v/-V Fail")
 				if(option.c && option.H){printErr("Truncation help will be attmepted on value input (-v/-V)")}
 				//try and rehab
 				var tempJSONValueArray=rehabJSON(valueArg)
@@ -1737,10 +1849,12 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 				}
 			}
 
+			cdebug("valueArg (after): " + JSON.stringify(valueArg))
 		}
 		//-f - from path
 		//create fromArgValidated
 		if(fromArg !== undefined) { 
+			//cdebug("fromArg: " + JSON.stringify(fromArg,null,0))
 			//this is a JSONPath, resolve
 			if(fromArg === "$"){
 				fromArgValidated = ""
@@ -1748,6 +1862,8 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 			//from is easy, it allows only one and it must exist
 			//if JSONPath
 			else if(fromArg[0] === "$"){
+				//cdebug("Resolve JSONPath: " + fromArg)
+				//cdebug("objectifyExpressions([fromArg],null): " + JSON.stringify(objectifyExpressions([fromArg],null)[0].path))
 				//resolve the from path as JSON Pointer: from must always exist, no second pass needed
 				try { 
 					fromArgValidated = jsonPath(obj, objectifyExpressions([fromArg],null)[0].path, {resultType:"PATH_JSONPOINTER"}); 
@@ -1757,6 +1873,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 				};
 				
 				if (!fromArgValidated.length){
+					cdebug("fromArgValidated: "+ JSON.stringify(fromArgValidated,null,0))
 					throw new Error("Unable to resolve from path: " + fromArg)
 				}
 				else if (fromArgValidated.length > 1){
@@ -1774,26 +1891,32 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 		//-p - (path) can resolve to multiple paths
 		//create pathArgValidated array
 		if(pathArg !== undefined) { 
+			cdebug("pathArg: " + JSON.stringify(pathArg,null,0))
 			//JSONPath $ is "" easy
 			if(pathArg === "$"){ 
 				pathArgValidated=[""]
 			}
 			//JSONPath of some sort, resolve
 			else if(pathArg[0] === "$"){
+				cdebug("Resolving JSONPath for path...")
 
 				//expand any union at the end of the string
 				try { pathArgValidated = objectifyExpressions([pathArg],{'expandTrailingUnion':true,'allowExpressions':true}) } catch(error) { throw new Error(error) }
+				cdebug("pathArgValidated (post-expand):\n" + JSON.stringify(pathArgValidated,null,2))
 
 				//take each path and verify it exists (remove, replace) or could exist (copy, move, add)
 				pathArgValidated = pathArgValidated.map(function(p){
 					//p is an object: {"path":[]}
+					cdebug("my p.path:\n" + JSON.stringify(p.path,null,2))
 
 					//if our path contains NO expressions, just absolute addresses: strings and numbers, return			
 					//xp "expanded path" of p evaluated through jsonPath and returned as JSON Pointer
 					try { var xp = jsonPath(obj, p.path, {resultType:"PATH_JSONPOINTER"}); } catch(error) { throw new Error(error) };
+					cdebug("xp: " + JSON.stringify(xp,null,0))
 
 					//if it resolved it will have a length > 0, return "expanded path"
 					if (xp.length) { 
+						//cdebug("return xp")
 						return xp 
 					}
 					//else if we get nothing AND it is remove, replace, or text return nothing - it should have existed!
@@ -1801,14 +1924,19 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 
 						//gracefully ignore non-existant paths [?! - what]
 						if (option.G){
+							//cdebug("return p: " + JSON.stringify(p,null,0))
 							return "/"+p.path.map(function(p){ return p.toString().replace(/~/g,"~0").replace(/\//g,"~1")}).join('/')
 						}
+						//cdebug("return \"\"")
 						return ""					
 					}
 					//pp "parent path"
 					var pp = p.path.slice()
 					//create pc "path child", while creating pp
 					var pc = pp.pop()
+					//cdebug("path parent (pp): " + JSON.stringify(pp,null,2))
+					//cdebug("path child (pc): " + JSON.stringify(pc,null,2))
+					//cdebug("pp.length: " + JSON.stringify(pp.length,null,2))
 
 					if(!pp.length && pc.expression === "-"){
 						var possiblePaths='/-'
@@ -1821,19 +1949,25 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 						if (!ppv.length) {
 							return ""
 						}
+						//cdebug("ppv: " + JSON.stringify(ppv,null,2))
 						//re-attach our path child (pc) to 1 or more ppv
 						var possiblePaths = ppv.map(function(ppve) {	
+							//cdebug("ppve: " + JSON.stringify(ppve,null,0))
 							//put child back on end
 							ppve.path.push(pc.expression === "-" ? "-" : pc)								
 							//test the child path to be either: ["key"] ['key'] .key (even though it should be normalized to ["key"]
 							//allow [-] however any other path should have resolved, JSON Patch does not allow for indices beyond length
 							if(pc !== null && (pc.constructor === String || pc.constructor === Array || pc.expression === "-")) { 
+								//cdebug("ppve: " + JSON.stringify(ppve,null,2))
+								//cdebug("ppve.path: " + JSON.stringify(ppve.path,null,2))
 								//possiblePath verified element in json pointer
 								var ppve_jp = "/" + ppve.path.map(function(p){ return p.toString().replace(/~/g,"~0").replace(/\//g,"~1")}).join('/')
+								//cdebug("ppve_jp: " + JSON.stringify(ppve_jp,null,2))
 								//return the JSONPath (ppve+pc) converted to JSON Pointer
 								return ppve_jp
 							}
 							else {
+								//cdebug("return ''")
 								return ""							
 							}
 						})
@@ -1843,6 +1977,7 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 						//return answer regqrdless of types
 						var possiblePaths = "/" + p.path.map(function(p){ return p.toString().replace(/~/g,"~0").replace(/\//g,"~1")}).join('/')
 					}
+					//cdebug("possiblePaths: " + JSON.stringify(possiblePaths,null,2))
 					//return possible paths
 					return possiblePaths
 				})
@@ -1859,7 +1994,9 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 					return !pos || item != ary[pos - 1];
 				});
 
+				//cdebug("pathArgValidated (post-mangling):\n" + JSON.stringify(pathArgValidated,null,2))
 				if (pathArgValidated.length > 1){
+					//cdebug("Multiple paths returned for from path: " + pathArg + "\n" + pathArgValidated.join("\n") )
 					if(option.opArg.move) {
 						throw new Error("Move operation cannot have multiple destinations: " + pathArg + "\n" + pathArgValidated.join("\n"))
 					}
@@ -1872,8 +2009,11 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 			else {
 				throw SyntaxError("Unrecognized query syntax: " + pathArg)
 			}
+			//cdebug("pathArgValidated:\n" + JSON.stringify(pathArgValidated,null,2))
 		}		 
 	}
+	cdebug("fromArgValidated: " +JSON.stringify(fromArgValidated,null,2))
+	cdebug("pathArgValidated: " +JSON.stringify(pathArgValidated,null,2))
 
 	//Operations - JSON Merge Patch, merge, diff, and JSON Patch
 
@@ -1892,12 +2032,15 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 			if(fromArgValidated){				
 				//since this is already normalized into JSON Pointer, pass to jsonPath as object				
 				try { var rawVal = jsonPath(obj,objectifyExpressions([fromArgValidated])[0].path,null)[0] } catch(e){throw new Error(e)}
+				//cdebug("rawVal: " + JSON.stringify(rawVal,null,0))
 				valueArg=rawVal
+				//cdebug("valueArg: " + valueArg)
 				if(valueArg === undefined){ throw new Error("From path does not exist: " + fromArgValidated) }
 			}
 			else if(fromArgValidated === ""){
 				//since this is already normalized into JSON Pointer, pass to jsonPath as object
 				valueArg = jsonPath(obj,[],null)[0]
+				//cdebug("valueArg!: " + JSON.stringify(valueArg))
 			}
 
 			//no destination path mean it's applying to the whole document
@@ -1907,9 +2050,13 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 			else{
 				//if we have more than one path, run for each
 				pathArgValidated.forEach(function(p){
+					//cdebug("path (p): " + JSON.stringify(p,null,0))
 					//get value of p within the obj
 					try { var pval = jsonPath(obj,objectifyExpressions([p])[0].path,null)[0] } catch(e){throw new Error(e)}
+					//cdebug("path value (pval): " + JSON.stringify(pval,null,0))
+					//cdebug("obj pre: "+JSON.stringify(obj))
 					var mergedValue = merge(pval,valueArg,(option.opArg.mergepatch ? true : false),(option.opArg.merge1 ? {"existingOnly":true} : (option.opArg.merge0 ? {"nonexistingOnly":true} : null )))
+					//cdebug("mergeFromToPath: "+JSON.stringify(obj))
 					//need to replace this data within the main object
 					try { obj = jsonpatch.apply_patch(obj,[{'op':"replace",'path':p,'value':mergedValue}]) } catch(e){throw new Error(e)}
 				})						
@@ -1928,6 +2075,8 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 		//-x is an inline JSON Patch statement
 		//-X denotes the argument is a filespec to a JSONPath document
 		if (option.x || option.X){
+			cdebug("option.x: " + option.x)
+			cdebug("option.X: " + !!option.X)			
 			if (option.X) {
 				var JSONPatch=readFile(JSONPatchArg)
 			} else {
@@ -1962,15 +2111,19 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 			//if i is not defined in here it will be the i from the calling function and screw things up!
 			var i
 			for(var i=0; i < pathArgValidated.length; i++){
+				//cdebug("pathArgValidated["+i+"]: " + pathArgValidated[i])
 				opArray[i]={'op':opArg,'path':pathArgValidated[i],'from':fromArgValidated,'value':valueArg}
 			}		
 		}
 		else {
 			throw new Error("JSON Patch operation with no path provided!")
 		}
+		//cdebug("opArray:\n" + JSON.stringify(opArray,null,2))
 		//try and apply the patch, throwing an error otherwise
 		try { obj = jsonpatch.apply_patch(obj,opArray) } catch(e){throw new Error("JSON Text ("+JSONTextNumber+") "+e)}
+		//cdebug("obj: " + JSON.stringify(obj,null,2))
 	}
+	//cdebug("alterObject, i: " + i)
 	return obj
 }
 
@@ -1978,6 +2131,8 @@ function alterObject(obj,valueArg,fromArg,pathArg,option,JSONTextNumber,JSONPatc
 // Orginally based on removeComments.js - James Padolsey - 2009 (https://j11y.io/javascript/removing-comments-in-javascript/)
 // Loosely based on: http://www.weanswer.it/blog/optimize-css-javascript-remove-comments-php/
 function rehabJSON(str) {
+	cdebug("rehabJSON(str): Comments, Spaces, JSON5, etc..\n")
+	//cdebug("str: " + str)
     str = str.split('');
 
 	//a few of the modes we can be in
@@ -2011,10 +2166,20 @@ function rehabJSON(str) {
 
     //process string
     for (var i=0, l=str.length; i < l; i++) {
+   		cdebug("str["+i+"]: "+JSON.stringify(str[i],null,0))
+   		//cdebug("str["+i+"]: "+ JSON.stringify(str[i],null,0))
+   		cdebug("lastCharIndex: " + lastCharIndex)
+		cdebug("str[lastCharIndex]: " + str[lastCharIndex])
+		cdebug("objStack[0]: " + JSON.stringify(objStack[0]))
+		//cdebug("mode.blockComment: " + mode.blockComment)
+		//cdebug("z: " + JSONTextStartIndex)
+		cdebug("objStack.length: " + objStack.length)
 		//inside a string '' or "" 
         if (mode.doubleQuote || mode.singleQuote) {   
+        	cdebug("In quotes: " + i)     	 
         	if (mode.inEscape) { 
         		mode.inEscape = false
+        		//cdebug("In Escape: i:" + i + " ("+ JSON.stringify(str[i],null,0) +")")
 				//JSON5 null escape \0 has rule that digit cannot follow
 				if (str[i] === '0' && (! /\d/.test(str[i+1]))) {
 					if (option.c) { 
@@ -2109,6 +2274,7 @@ function rehabJSON(str) {
         	}
         	//if there is an unescaped newline in a string that's usually truncation
         	else if (str[i] === '\n') {
+        		cdebug("\\n in quotes...")
 				if (option.c) {	
 					printErr("Byte " + (i+1) + ": literal newline in quotes" )
 				}
@@ -2136,6 +2302,8 @@ function rehabJSON(str) {
 						//work through objStack
 						var a;
 						for(a=0; a < objStack.length; a++){						
+							cdebug("objStack["+a+"].type: " + objStack[a].type)
+							cdebug("objStack["+a+"].state: " + objStack[a].state)
 							if(objStack[a].type === "Object"){		
 								if(objStack[a].state === "NEEDS_NAMESEP"){
 									if(option.c){
@@ -2161,7 +2329,9 @@ function rehabJSON(str) {
 								}	
 							}
 							else if(objStack[a].type === "Array"){
+								cdebug("HELP ARRAY (in string)")
 								if(objStack[a].state === "NEEDS_ENDER"){
+									cdebug("ARRAY END ADDED")
 									if(option.c){
 										if(a === 0){
 											printErr("Truncation help after byte "+(i)+", open string and array end: \"]")
@@ -2198,6 +2368,7 @@ function rehabJSON(str) {
                 mode.lineComment = false;
             }
             //remove the comment character
+            //cdebug("Removing comment "+i+": " + JSON.stringify(str[i],null,2)) 
 	        str[i] = '';                    
         }
  		//in /* */ block comment
@@ -2228,6 +2399,7 @@ function rehabJSON(str) {
         }
  		//WHITESPACE - \s matches all Unicode Zs spaces, except BOM 0xfefe (JSON5)
  		else if(/[\s\ufefe]/.test(str[i])){
+ 			cdebug("WHITESPACE at i: " + i)
 
 	 		//JSON5 allows additional white space chars - https://www.compart.com/en/unicode/category/Zs
 			if(option.c && ! /[ \n\r\t]/g.test(str[i])){
@@ -2242,24 +2414,29 @@ function rehabJSON(str) {
 				if (str[i] === '\r' && str[i+1] === '\n'){
 					//move ahead to \n
 					i=i+1
+					cdebug("CRLF, moved ahead to i: " + i)
 				}
 				else {
+					cdebug("Normalize to \\n")
 					str[i]='\n'				
 				}
 			}
 			//other space-like characters
 			else if(/[^ \n]/g.test(str[i])) {
+				cdebug("Normalize to <space> i: " + i)
 				str[i] = ' '		
 			}
 			
 			//IGNORE normalized WS if NOTHING else has been processed
 			if (lastCharIndex === undefined) {
+				cdebug("Ignoring WS before JSON, byte: " + i + '\n')
 				JSONTextStartIndex=i+1
 				continue;
 			}	
 			
 			//Make NEW JSON text if we are NOT in an object/array AND have processed something (not validating numbers) OR we are at the end
 			if ((! objStack.length && lastCharIndex !== undefined) || (i === l-1)) {
+				cdebug("ANY WS AND we are NOT in an object or array AND HAVE processed any significant text")
 				makeNewText = true
 			}
 		}
@@ -2267,10 +2444,12 @@ function rehabJSON(str) {
  		else if (str[i] === '"' || str[i] === "'") {
 
 			if (str[i] === '"'){
+				cdebug("\" QUOTE")
 				//set the quote mode 
 				mode.doubleQuote = true;
 			}
 			else {
+				cdebug("' QUOTE")
 				mode.singleQuote = true;
 				//convert back to JSON standard double quote
 				str[i] = '"'
@@ -2336,6 +2515,7 @@ function rehabJSON(str) {
 				}		
 		
 				objStack.unshift({"type":"Object","state":"OBJECT_BEGIN"})
+				cdebug("Object begin { at i: " + (i+1))			
 		
 				lastCharIndex = i			
 			}
@@ -2366,6 +2546,7 @@ function rehabJSON(str) {
 				}		
 
 				objStack.unshift({"type":"Array","state":"ARRAY_BEGIN"})
+				cdebug("Array begin [ at i: " + i)
 			
 				lastCharIndex = i
 			}
@@ -2381,6 +2562,7 @@ function rehabJSON(str) {
  				//just blank it out
  				str[lastCharIndex]=''
  			}
+ 			cdebug("End of Object")
  			//shift this OFF the stack
  			objStack.shift()
 
@@ -2403,6 +2585,7 @@ function rehabJSON(str) {
  				//just blank it out
  				str[lastCharIndex]=''
  			}
+ 			cdebug("End of Array")
 
  			//shift this OFF the stack
  			objStack.shift()
@@ -2486,6 +2669,7 @@ function rehabJSON(str) {
 					objStack[0].state = "NEEDS_ENDER"
 				}
 			}
+			cdebug("Changing . to 0. at: " + i)
 			//change from .x to 0.x
 			str[i] = '0.'
 			lastCharIndex = i
@@ -2500,10 +2684,12 @@ function rehabJSON(str) {
 		//JSON5 NaN as a value in objects, arrays, and standalone: convert to null
 		else if ((str[i] === 'N' && str[i+1] === 'a' && str[i+2] === 'N') && (! objStack.length || (objStack[0].type === "Object" && str[lastCharIndex] !== '{' && str[lastCharIndex] !== ',' ) || objStack[0].type === "Array")) {
 			if(option.c){
+				//cdebug("lastCharIndex: " + lastCharIndex)
 				printErr("Byte " + (i+1) + ": NaN for value (JSON5)") 
 			}
 			
 			if(option['8']){
+				//cdebug("NaN: Blank: " + i +"-" + (i+1) + ", Overwrite with \"NaN\": " + (i+2) )
 				str[i]='"'
 				str[i+1]='NaN'
 				str[i+2]='"'
@@ -2511,6 +2697,7 @@ function rehabJSON(str) {
 				i=i+2				
 			}
 			else {
+				//cdebug("NaN: Blank: " + i +"-" + (i+1) + ", Overwrite with null: " + (i+2) )
 				str[i]=''
 				str[i+1]=''
 				str[i+2]='null'
@@ -2519,13 +2706,16 @@ function rehabJSON(str) {
 			}
 
 			lastCharIndex = i;
+			cdebug ("NaN str["+ i +"]: " + str[i])
 		}	
 		//JSON5 +/-Infinity (As a value only only)
 		else if ((str[i] === '-' || str[i] === '+') && str[i+1] === 'I' && str[i+2] === 'n' && str[i+3] === 'f' && str[i+4] === 'i' && str[i+5] === 'n' && str[i+6] === 'i' && str[i+7] === 't' && str[i+8] === 'y') {
+			//cdebug ( str[i] + "Infinity at " + i)
 
 			//ensure it is in an array or as an object value only
 			if(! objStack.length || (objStack[0].type === "Object" && str[lastCharIndex] !== '{' && str[lastCharIndex] !== ',' ) || objStack[0].type === "Array") {
 				if(option.c){
+					//cdebug("lastCharIndex: " + lastCharIndex)
 					printErr("Byte " + (i+1) + ": "+str[i]+"Infinity as value (JSON5)") 
 				}				
 
@@ -2555,6 +2745,7 @@ function rehabJSON(str) {
 		//JSON5 Infinity - As both key name and value in objects and arrays
 		else if (str[i] === 'I' && str[i+1] === 'n' && str[i+2] === 'f' && str[i+3] === 'i' && str[i+4] === 'n' && str[i+5] === 'i' && str[i+6] === 't' && str[i+7] === 'y') {
 			if(option.c){
+				//cdebug("lastCharIndex: " + lastCharIndex)
 				printErr("Byte " + (i+1) + ": Infinity as value (JSON5)") 
 			}
 			str[i]=''
@@ -2578,6 +2769,7 @@ function rehabJSON(str) {
 		}
 		//JSON5 0x hex numbers in arrays and object and at beginning of this string
 		else if(str[i] === "0" && str[i+1] === "x" && (! objStack.length || objStack[0].type === "Array" || (objStack[0].type === "Object" && str[lastCharIndex] === ':'))) {
+			cdebug("JSON5 Hex at: " + i)
 			//negative?
 			if(str[i-1] === '-'){
 				//back it up
@@ -2586,12 +2778,15 @@ function rehabJSON(str) {
 			else {
 				var hexIndexBegin=i
 			}
+			//cdebug("HEX: " + str[i])
 			if(option.c){
 				printErr("Byte " + (hexIndexBegin-1) + ": 0x hex value (JSON5)")
 			}
 			//move i ahead, then loop until non-hex character or , ] }  comma, right bracket, right curly, whitespace
 			for (i=i+2;i < l; i++) {
+				cdebug("for HEX["+i+"]: " + str[i])
 				if (! /[0-9A-Fa-f]/.test(str[i]) || /\s/.test(str[i]) || str[i] === ',' || str[i] === ']' || str[i] === '}' ||  str[i] === ' ' || str[i] === '\t' || str[i] === '\r' || str[i] === '\n' || str[i] === ':' || str[i] === '\ufefe' ) {
+					cdebug("Non Hex Break at " + i + ": \""+str[i]+"\"")
 					//backup
 					i=i-1
 					break
@@ -2600,7 +2795,9 @@ function rehabJSON(str) {
 
 			var hexIndexEnd=i
 			//make string bounded by indexes
+			//cdebug("Hex range begin: " + hexIndexBegin + ", Range End: " + hexIndexEnd) 
 			var hexString=str.slice(hexIndexBegin,hexIndexEnd+1).join('')
+			//cdebug ("hexString: "+hexString)
 			var hexToDecimalValue=eval(hexString);
 			//put the decimal value at the end of the range
 			str[hexIndexEnd]=hexToDecimalValue
@@ -2623,6 +2820,7 @@ function rehabJSON(str) {
 		}
 		//- sign OR a Number
 		else if (str[i] === '-' || /\d/.test(str[i])) {
+			cdebug("Number or -")
 			//set state depending on current context
 			if(objStack.length && objStack[0].type === "Object" && objStack[0].state === "NEEDS_VALUE") {
 				objStack[0].state = "NEEDS_ENDER"
@@ -2640,17 +2838,20 @@ function rehabJSON(str) {
 		}
 		//JSON5 unquoted key name, comes after a { or , inside an object
 		else if(/[$_A-Za-z]/.test(str[i]) && objStack.length && objStack[0].type === "Object" && (str[lastCharIndex] === '{' || str[lastCharIndex] === ',') ) {
+			//cdebug("unquoted key")
 			//this should loop forward until whitespace or : and quote whatever it finds
 			if(option.c){ 
 				printErr("Byte " + (i+1) + ": unquoted object key name (JSON5)")
 			}
 			//put a quote before this character
+			cdebug("Placing quote before ("+i+"): " + str[i])
 			str[i]="\"" + str[i]
 			
 			//loop forward until a ws or :
 			//' ' || '\t' || '\r' || '\n' || '\u2028' || '\u2029' || ':'
 			//move i ahead one until whitespace
 			for (i=i+1;i<str.length; i++) {
+				cdebug("key char scan: " + str[i])
 				//until an 
 				if (/[^$_A-Za-z0-9]/.test(str[i])) {
 					//back up
@@ -2659,6 +2860,7 @@ function rehabJSON(str) {
 				}				
 			}
 			
+			cdebug("Placing quote after ("+i+"): " + str[i])
 			str[i] = str[i] + "\""
 			//this is multi-character but nothing tests for "
 			lastCharIndex = i
@@ -2686,6 +2888,7 @@ function rehabJSON(str) {
 		//JSON5 COMMENTS
  		// // or /* style comment 
         else if (str[i] === '/' && str[i+1] === '*') {
+			//cdebug("/* Block Comment")
 			if(option.c){ 
 				printErr("Byte " + (i+1) + ": /* block comment (JSON5)")
 			}
@@ -2693,6 +2896,7 @@ function rehabJSON(str) {
 			mode.blockComment = true;
 		}
         else if (str[i] === '/' && str[i+1] === '/') {
+			//cdebug("// line comments")
 			if(option.c){ 
 				printErr("Byte " + (i+1) + ": // line comment (JSON5)")
 			}			
@@ -2742,21 +2946,29 @@ function rehabJSON(str) {
 		}
 		//some other data, set lastCharIndex
 		else {
+			cdebug("ELSE: " + str[i])
 			lastCharIndex = i
 		}
+		cdebug("End loop for i: " + i + "\n")
+		//cdebug("End loop str: " + str + "\n")
 		//end of for loop for str
 		//make new JSON text if we need to...
 		if(makeNewText){
+			cdebug("Create JSON Text: " + str.slice(JSONTextStartIndex,i+1).join('') + '\n')
 
 			var tempString=''
 			//if we are STILL in an obj/arr and -H see if we can help
 			if(objStack.length && option.H) {
+				cdebug("objStack: " + JSON.stringify(objStack,null,2))
 				if (option.c){
 					printErr("Truncation help for JSON Text (" + (JSONTexts.length+1) +"), bytes: " + (JSONTextStartIndex+1) + "-" + (i+1))
 				}	
 				//work through objStack
 				var a;
 				for(a=0; a < objStack.length; a++){
+					cdebug("objStack["+a+"].type: " + objStack[a].type)
+					cdebug("objStack["+a+"].state: " + objStack[a].state)
+					cdebug("str["+i+"]: " + str[i])
 					if(objStack[a].type === "Object"){
 						if(objStack[a].state === "NEEDS_ENDER" || objStack[a].state === "OBJECT_BEGIN"){
 							if(option.c){printErr("Truncation help after byte "+(i+1)+", object end: }")}
@@ -2819,8 +3031,13 @@ function rehabJSON(str) {
 			mode.blockComment=false
 			mode.blockCommentXML=false
 			mode.lineComment=false
+			cdebug("_ JSONTextStartIndex: " + JSONTextStartIndex)
 		} 		
     }
+    cdebug("z JSONTextStartIndex: " + JSONTextStartIndex)
+    cdebug("FINAL i: " + i)
+    //cdebug("Final str: " + str)
+    //cdebug("JSONTexts: " + JSON.stringify(JSONTexts,null,2))
 	return JSONTexts
 }
 //******************//
@@ -2830,6 +3047,8 @@ function rehabJSON(str) {
 //jsc lacked printErr() in 10.4-10.7 - use debug
 if (typeof printErr === "undefined" ) { function printErr(string) { debug(string) } }
 
+//our cdebug function for troubleshooting
+function cdebug(string) { if(option.z) printErr(string) }
 
 //*********//
 //VARIABLES// 
@@ -2902,6 +3121,11 @@ if(option.K) { option.i = true }
 //****//
 //MAIN//
 //***//
+cdebug("arguments: " + JSON.stringify(arguments,null,2))
+cdebug("optionsArg: " + optionsArg)
+cdebug("query: " + JSON.stringify(query,null,0))
+//cdebug("option.opArg: " + JSON.stringify(option.opArg,null,2))
+cdebug("option: " +JSON.stringify (option,null,2))
 
 /* */ //get fileText
 //use readFile() if we can
@@ -2915,6 +3139,7 @@ if (typeof readFile === "function" ) {
 		printErr("File error (note: jsc max size is " + maxSize.file + " bytes): " + error)
 		quit()
 	};
+	//cdebug("fileText: " + fileText)
 } 
 //else read in line by line with readline()
 else {
@@ -2926,6 +3151,8 @@ else {
 	//readline will take in UTF-8 but pass to JS as if it was UTF-16, escape strips the leading 00 byte
 	while ( line = decodeURIComponent(escape(this.readline())) ) { fileText += line + '\n'; }	
 };
+//cdebug("fileText: " + fileText)
+//cdebug("/^\s*\$/.test(fileText): " + /^\s*\$/.test(fileText))
 
 /* */ //turn fileText into JSONObjectArray
 var JSONObjectArray=[];
@@ -2964,6 +3191,7 @@ else if (/\u001e/.test(fileText)) {
 		//if we start with a "$" parse as JSONPath Object Literals
 		if(/^\s*\$/.test(tempJSONArray[i])){ 
 			//attempt to ingest the literals
+			cdebug("Literals processing")	
 			try { 
 				JSONObjectArray[j] = ingestLiterals(tempJSONArray[i],option);
 				var lastParse=1
@@ -2987,6 +3215,7 @@ else if (/\u001e/.test(fileText)) {
 				printErr("Error: Unable to parse JSON Sequence text (" + i + "): " + tempJSONArray[i]);
 				var lastParse=0
 			}
+			//cdebug("lastParse "+ i + ": " + lastParse)
 			//if last parse was a success AND is a Number, Boolean, or null AND DOES NOT have a space char at the end THEN it is NOT VALID per RFC spec
 			if(lastParse && (JSONObjectArray[j] === null || JSONObjectArray[j].constructor === Number || JSONObjectArray[j].constructor === Boolean) && !/\s/.test(tempJSONArray[i][tempJSONArray[i].length-1])){
 				//test for final character being a WS
@@ -3003,10 +3232,11 @@ else if (/\u001e/.test(fileText)) {
 }
 
 //Process JSONPath Object Literals if it begins with a $
-//Note: JPOL is for expressing a SINGLE JSON entity, NOT multiple (seperate with RS for multiple JSON texts as a sequence)
+//Note: JPOL is for expressing a SINGLE JSON node, NOT multiple nodes (separate JPOL with RS for multiple JSON texts)
 else if(/^\s*\$/.test(fileText)){ 
 	//attempt to ingest the literals
-	try { JSONObjectArray[0] = ingestLiterals(fileText,option) }catch (e){printErr(e); quit()}	
+	cdebug("Literals processing")	
+	try { JSONObjectArray[0] = ingestLiterals(fileText,option)} catch(e){printErr(e); quit() }
 } 
 //parse fileText to JSON Text(s) in JSONObjectArray
 else {
@@ -3017,8 +3247,10 @@ else {
 		if (option.c){ 
 			printErr("Original error: " + error); 
 		}
+		//cdebug("fileText: " + fileText)
 		//send string to rehab function
 		var tempJSONArray=rehabJSON(fileText)
+		//cdebug("tempJSONArray (post-rehab): " + JSON.stringify(tempJSONArray,null,2))
 		//loop through each possible text and attempt a parse
 		for(var i=0,j=0;i < tempJSONArray.length ;i++,j++) {
 			//attempt parse of possible json texts in  array 
@@ -3047,9 +3279,13 @@ if (multiJSONArg == 'a') {
 //QUERY collector
 var resultObjects=[];
 
+//cdebug("resultObjects (pre):" + JSON.stringify(resultObjects,null,0))
+cdebug("JSONObjectArray.length: " + JSONObjectArray.length)
+//cdebug("JSONObjectArray: " + JSON.stringify(JSONObjectArray, null, 2))
 
 //LOOP through JSONObjectArray[i] - invoking alterObject for JSON Patch/JSON Merge Patch operations, then JSONPath query
 for(var i=0; i < JSONObjectArray.length; i++){
+	cdebug("top of for loop, i: " + i)
 	//if we have something in opArg...
 	//invoke alterObject for JSON Patch, JSON Merge Patch and other operations
 	if(option.x || option.X || (option.opArg.constructor === Object && Object.keys(option.opArg).length)){
@@ -3064,6 +3300,7 @@ for(var i=0; i < JSONObjectArray.length; i++){
 
 	//if no query use the whole object for resultObjects
 	if((query === "$" || query === "" ) && !option.j && !option.r) { 
+		cdebug("No query, assign resultObjects["+i+"] = JSONObjectArray["+i+"]")
 		//put in array as if it were a query result though for consistent handling later
 		resultObjects[i] = [ JSONObjectArray[i] ]
 	}
@@ -3074,23 +3311,28 @@ for(var i=0; i < JSONObjectArray.length; i++){
 			var queryObject = objectifyExpressions([query],{'disallowData':true,'allowExpressions':true})[0].path 
 		} 
 		catch(error){
+			//cdebug("Error: objectifyExpressions")
 			printErr(error); 
 			//quit do not continue
 			quit()
 		}
+		//cdebug("queryObject: " + JSON.stringify(queryObject,null,2))
 		//invoke JSONPath on queryObject, on error quit
 		try { 
 			resultObjects[i] = jsonPath(JSONObjectArray[i], queryObject, (option.j || option.r) ? {'resultType': option.d ? "PATH_DOTTED" : option.r ? "PATH_JSONPOINTER" : "PATH", 'singleQuoteKeys':option.q,'P.escapeUnicode':(option.u ? true : false)} : null); 
 		} 
 		catch(error) { 
+			//cdebug("ERROR!")
 			printErr(error); 
 			//quit do not continue
 			quit()
 		}
 	}
+	//cdebug("1resultObjects[" + i + "]:" + JSON.stringify(resultObjects[i],null,0))
 	//now after getting the results, if the value is [] then we have NO results - even an empty array would return as [[]] not []
 	if(! resultObjects[i].length) {
 		printErr("Path not found (" + query +") in JSON text (" + (i+1) + ")")
+		//cdebug("Alert: Path not found in JSON text (" + (i+1) + ")")
 		//undefined is unambiguos to whether results were returned
 		resultObjects[i]=undefined
 	}
@@ -3100,10 +3342,12 @@ for(var i=0; i < JSONObjectArray.length; i++){
 //LOOP through resultObjects[i]
 for(var i=0;i<=resultObjects.length-1;i++){
 	if (resultObjects[i] === undefined) { continue; }
+	//cdebug("2resultObjects["+i+"]: " + JSON.stringify(resultObjects[i],null,0))
 	//remove the outer array from resultObjects
 	if (Array.isArray(resultObjects[i]) && resultObjects[i].length === 1 ){
 		resultObjects[i]=resultObjects[i][0]
 	}
+	//cdebug("resultObjects (post):" + JSON.stringify(resultObjects,null,0))
 	//-N reduce the nested arrays with one member
 	if(option.N && resultObjects[i] !== null ) {
 		//if we have an array and contain exactly 1 object we can reduce
@@ -3114,6 +3358,7 @@ for(var i=0;i<=resultObjects.length-1;i++){
 			}
 			//if the item is NOT an array (in a very double negative way): break
 			if ( !resultObjects[i].some(function(val) { return (val != null)&&(typeof val === "object") })) { 
+				cdebug("-N Break")
 				//break; 
 			};
 			//remove a level of nesting
@@ -3123,6 +3368,7 @@ for(var i=0;i<=resultObjects.length-1;i++){
 
 	//if -a and item is NOT an array, make it one with our resultObjects
 	if (option.a && !Array.isArray(resultObjects[i])) {
+		cdebug("Not Array: adding surrounding []")
 		resultObjects[i]=[resultObjects[i]]
 	}
 
@@ -3133,29 +3379,36 @@ for(var i=0;i<=resultObjects.length-1;i++){
 
 	//-l print length of array, object, string then quit
 	if (option.l) { 
+		//cdebug("resultObjects[" + i + "]: " + JSON.stringify(resultObjects[i],null,0))
 		//null -  null returns 0 (as do empty: arrays, objects and strings)
 		if(resultObjects[i] === null) { 
+			cdebug("null, length: 0")
 			print("0") 
 		}
 		//number - return 1 
 		else if (resultObjects[i].constructor === Number) { 
 			//just counted number of all the digit characters
+			cdebug("number, length: 1")
 			print("1")
 		}
 		//boolean - count as 1 value
 		else if (resultObjects[i].constructor === Boolean) { 
+			cdebug("boolean, length: 1")
 			print("1") 
 		}
 		//string - character count
 		else if (resultObjects[i].constructor === String) { 
+			cdebug("string, length: " + resultObjects[i].length)
 			print(resultObjects[i].length); 
 		}
 		//array - element count 
 		else if (Array.isArray(resultObjects[i])) { 
+			cdebug("array, length: " + resultObjects[i].length)
 			print(resultObjects[i].length); 
 		}
 		//object - key count
 		else if (resultObjects[i].constructor === Object) { 
+			cdebug("object, length (keys): " + Object.keys(resultObjects[i]).length)
 			print(Object.keys(resultObjects[i]).length); 
 		}
 		//don't need to do anything remaining in this loop
@@ -3173,11 +3426,13 @@ for(var i=0;i<=resultObjects.length-1;i++){
 
 //if length only quit now, it has already been printed
 if (option.l){
+	cdebug("Length only, exiting now.")	
 	quit();
 }
 
 //PRINT
 /* */ //turn resultObjects into resultText
+cdebug("Print Loop...")
 
 //-MA makes multi-text JSON results into a single JSON array
 if (multiJSONArg == 'A') {
@@ -3191,8 +3446,10 @@ if (multiJSONArg == 'A') {
 //LOOP through resultObjects[i]
 for(var i=0;i<=resultObjects.length-1;i++){
 	if (resultObjects[i] === undefined) { continue; }
+	//cdebug("3resultObjects["+i+"]: " + JSON.stringify(resultObjects[i],null,0))
 	//create resultText if a text output mode chosen (-T/-t -L -J/-j -R/-r )
 	if ( option.T || option.L || option.J || option.R || option.j || option.r ) {
+			//cdebug("-T for: " + JSON.stringify(resultObjects[i],null,0))
 			//create a flat array of strings to process as text if required, -p paths are already how we want them
 			if(!option.j && !option.r) {
 				resultObjects[i]=renderObject(resultObjects[i],(!option.T ? (option.R ? "" : "$") : null),option)
@@ -3212,6 +3469,7 @@ for(var i=0;i<=resultObjects.length-1;i++){
 	else { 
 		//if we are specifiying -MN (NDJSON) then enforce spaceArg of 0
 		if (multiJSONArg == 'N'){ spaceArg = 0 }
+		//cdebug("Creating resultText for resultObjects[" + i + "]: "+ JSON.stringify(resultObjects[i],null,spaceArg))
 		try { 
 			//-u escapes 7f-ffff otherwise just 7f
 			//-/ will escape / with \/ (on spec if required)
@@ -3222,6 +3480,7 @@ for(var i=0;i<=resultObjects.length-1;i++){
 		catch(error){
 			printErr("JSON.stringify " + error)
 		}
+		cdebug("resultText: " + resultText)
 	}
 
 	//for JSON pointer output (-r or -R) combined with the -EW or -Ew option outputs URI fragment representations
@@ -3237,6 +3496,7 @@ for(var i=0;i<=resultObjects.length-1;i++){
 	else {
 		var possibleRS="" 
 	}
+	//cdebug("Print Results: " + JSON.stringify(resultText,null,0))
 	if (resultText === undefined) { continue }
 	//print function fails after after 715827882 bytes
 	else if (resultText.length > maxSize.print) { jscChunkPrint(possibleRS + resultText) }
@@ -3250,7 +3510,7 @@ EOT
 
 #help text in a single line
 read -r -d '' helpText <<'EOT'
-jpt (v1.0.0) - JSON Power Tool (https://github.com/brunerd/jpt)\n\nUsage:\njpt [options] [<query>] [<file>]\n\nArguments:\n\t[<query>] - JSONPath or JSON Pointer expression (optional), returns entire document otherwise.\n\t[<file>] - path to JSON file\n\nNotes:\n\tDefault output mode is JSON (RFC8259/STD90)\n\tMultiple JSON texts will be output as a JSON Text Sequence (RFC 7464) (use -M to change)\n\tIf no file is specified, jpt will await input by file redirection, Unix pipe, or via /dev/stdin (end with Control-D)\n\tjpt accepts JSON, JSON text Sequences, and non-JSON mutations such as JSON5, NDJSON and jpt's own JSONPath Object Literals\n\tJSON Text Sequences will be strictly parsed to RFC 7464 specs, non-JSON elements are only tolerated in single and concatenated JSON texts\n\tNon-JSON elements are corrected automatically, if possible, before parsing (use -c for comments via stderr with an exit status of 1)\n\t  Mostly JSON5 Rehabilitations:\n\t    Unquoted object keys and single quoted strings are converted to JSON strings\n\t    Additional Unicode whitespaces and paragraph separators are converted to normal spaces (0x20) and newlines (0x0A)\n\t    Trailing commas are removed from object and array elements\n\t    Explicit plus signs on numbers are removed, decimals without leading zeroes are restored\n\t    Multi-line strings with escaped line breaks are reverted to standard JSON strings\n\t      Literal tabs in strings are removed also\n\t    Escaped character conversions: \n\t\t  \\0 to null\n\t\t  \\v to '\\u000c'\n\t    JSON5 number type conversions: \n\t\t  NaN to null (use -8 to convert to "NaN" string)\n\t\t  Inifinity to null (use -I to convert to "Infinity" string, with sign if specified)\n\t    Single-line (//) and multi-line (/* */) style comments are removed\n\t\t  Additionally multi-line XML (<!-- -->) and single line Shell (#), ASM (;), and Lua (--) comments are removed\n\t\nGeneral Options:\n\t-h this help screen\n\nJSON Output Options:\n\t-i "<number/string>" indent number of spaces (0-10) or use a <string> for each level of indent\n\t-O Order property names in objects alphabetically\n\t-u Unicode escape (\\u) all characters above 0x7E\n\nAdvanced JSON Output Options:\n\t-a always output result in an array\n\t-c comment on corrections to non-standard JSON via stderr output (with exit status of 1)\n\t-F Flatten array output\n\t-I Convert JSON5 +/-Infinity value to a string with signedness (otherwise converts to null)\n\t-N Nested single element arrays are reduced\n\t-8 Convert JSON5 NaN to a string (otherwise converts to null)\n\t-/ Escape solidus / with a reverse solidus like \\/, useful for HTML with embedded JSON encoded HTML\n\nInput Options:\n\t-D Detect truncation within objects and arrays in concatenated JSON only\n\t-g path-only JSONPath Object Literals are assigned a value of null ("gratis nulls")\n\t-G Guard previously defined JSONPath Object Literals from being modified by new statements\n\t-H Help truncated JSON by closing up open strings, objects and arrays\n\t-S Treat input as a JSON string\n\nMultiple JSON Text Options:\n\t-M "<value>" - options for working with multiple JSON texts\n\t\tS - Output JSON Text Sequences strictly conforming to RFC 7464 (default)\n\t\tN - Output newline delimited JSON texts\n\t\tC - Output concatenated JSON texts\n\t\tA - Gather JSON texts into an array, post-query and post-patching\n\t\ta - Gather JSON texts into an array, pre-query and pre-patching \n\nAlternate Output Modes (non-JSON):\n\t-l output the length of the resulting array, object property count, or length of string\n\n\t-J JSONPath path(s) of the object returned by the query\n\t-j JSONPath path(s) matched by the query results\n\n\t-R JSON Pointer path(s) of the object returned by the query\n\t-r JSON Pointer path(s) matched by the query results\n\t\tSpecifiying -EW or -Ew encodes both -r and -R JSON Pointer paths in URI fragment style\n\n\t  -J and -R path output options:\n\t\t-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)\n\t\t-K/-k print property (key) names and array indices only with no preceding path, default indent is 2\n\t\t\t-i "<value>" indent spaces (0-10) or character for each level of indent\n\n\t-L JSONPath Object Literal notation output of the resulting object\n\t\tJPOL Format: <JSONPath expression>=<JSON value>\n\t\t\t<JSONPath expression> is simply Javascript expression syntax with $ as the object name\n\t\t\t\tExample: $.key, $["key"], $['key'], or $[0]\n\t\t\t<JSON value> is any valid JSON value (plus single quoted strings)\n\t\t\t\tExample: 'string', "string", [], {}, 42, true, false, null\n\n\t  JSONPath output options for -L -J and -j:\n\t\t-d Use dot notation for object property names when possible, rather than bracket notation\n\t\t-q Use single quotes for bracketed property names, string values remain JSON doublew quoted\n\t\t-Q Use single quotes for BOTH bracketed property names AND string values (-L only)\n\t\t-u encode characters above 7E with \\u escape\n\n\t  Output limiting options for -L, -J, and -R:\n\t\t-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects\n\t\t-Z "<int>" Depth\n\t\t\tCombined with -L it will coalesce lower depth levels into a compound JSON object/array statement\n\t\t\tCombined with -P both -J and -R will return only purely primitive nodes at or below the Z level\n\n\t-T textual output of all data (omits property names and indices)\n\t  Options:\n\t\t-e Print escaped characters literally: \\b \\f \\n \\r \\t \\v and \\\\ (escapes formats only)\n\t\t-i "<value>" indent spaces (0-10) or character string for each level of indent\n\t\t-n convery null value to string 'null' (pre-encoding)\n\n\t\t-E "<value>" encoding options for -T output:\n\n\t\t  Encodes string characters below 0x20 and above 0x7E with pass-through for all else:\n\t\t\tx \t"\\x" prefixed hexadecimal UTF-8 strings\n\t\t\tO \t"\\nnn" style octal for UTF-8 strings\n\t\t\t0 \t"\\0nnn" style octal for UTF-8 strings\n\t\t\tu \t"\\u" prefixed Unicode for UTF-16 strings\n\t\t\tU \t"\\U "prefixed Unicode Code Point strings\n\t\t\tE \t"\\u{...}" prefixed ES2016 Unicode Code Point strings\n\t\t\tW \t"%nn" Web encoded UTF-8 string using encodeURI (respects scheme and domain of URL)\n\t\t\tw \t"%nn" Web encoded UTF-8 string using encodeURIComponent (encodes all components URL)\n\n\t\t\t  -A encodes ALL characters\n\t\t\n\t\t  Encodes both strings and numbers with pass-through for all else:\n\t\t\th \t"0x" prefixed lowercase hexadecimal, UTF-8 strings\n\t\t\tH \t"0x" prefixed uppercase hexadecimal, UTF-8 strings\n\t\t\to \t"0o" prefixed octal, UTF-8 strings\n\t\t\t6 \t"0b" prefixed binary, 16 bit _ spaced numbers and UTF-16 strings\n\t\t\tB \t"0b" prefixed binary, 8 bit _ spaced numbers and UTF-16 strings\n\t\t\tb \t"0b" prefixed binary, 8 bit _ spaced numbers and UTF-8 strings\n\n\t\t\t  -U whitespace is left untouched (not encoded)\n\nData Processing:\n\tjpt can apply JSON Patch (RFC 6902), JSON Merge Patch (RFC 7396), and other operations to JSON text(s)\n\n\tJSON Patch processing:\n\t\t-X "<filepath to JSON Patch>" a file path to a JSON Patch array (RFC 6902)\n\t\t-x "<inline JSON Patch>" inline JSON Patch text (RFC 6902)\n\t\t\n\tJSON Patch Example (from RFC 6902):\n\t\t [\n\t\t\t { "op": "test", "path": "/a/b/c", "value": "foo" },\n\t\t\t { "op": "remove", "path": "/a/b/c" },\n\t\t\t { "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] },\n\t\t\t { "op": "replace", "path": "/a/b/c", "value": 42 },\n\t\t\t { "op": "move", "from": "/a/b/c", "path": "/a/b/d" },\n\t\t\t { "op": "copy", "from": "/a/b/d", "path": "/a/b/e" }\n\t\t]\n\n\tSingle operations for JSON Patch, JSON Merge Patch, and others can be crafted using -o plus -p (path) and possibly -f (from) or -v/-V (value)\n\n\t\t-o "<operation>":\n\t\t [JSON Patch Operations]\n\t\t  add\n\t\t\t-o add -p "<path>" -v "<value>"\n\t\t\t\tadd/replace value in object or insert value into array index (RFC 6902)\n\t\t  replace\n\t\t\t-o replace -p "<path>" -v "<value>"\n\t\t\t\treplace value of existing object property (key) or array index (RFC 6902)\n\t\t  remove\n\t\t\t-o remove -p "<path>"\n\t\t\t\tremove specified path from the document (RFC 6902)\n\t\t  move\n\t\t\t-o move -f "<from>" -p "<path>"\n\t\t\t\tmove a path to a new or existing path/node(RFC 6902)\n\t\t  copy\n\t\t\t-o copy -f "<from>" -p "<path>"\n\t\t\t\tcopy a path to a new or existing path/node (RFC 6902)\n\t\t  test\n\t\t\t-o test -p "<path>" -v "<value>"\n\t\t\t\ttest if a path matches a value exactly (RFC 6902), return 0 if true, 1 if false\n\n\t\t [Other Operations]\n\t\t  diff\n\t\t\t-o diff -v "<value>"\n\t\t\t\tGiven a value, compare with JSON text and produce a JSON Merge Patch (RFC 7396) document\n\t\t  mergepatch\n\t\t\t-o mergepatch (-v/-V "<value>" || -f "<path>") [-p <path>]\n\t\t\t\tJSON Merge Patch (RFC 7396) operation: null values delete target object property\n\t\t\t\tCan pull data from -v/-V "<value>" OR -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t  merge\n\t\t\t-o merge (-v/-V "<value>" || -f "<path>") [-p "<path>"]\n\t\t\t\tNon-RFC 7396 merging operation, object properties with null values are NOT removed\n\t\t\t\tCan pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t  merge0\n\t\t\t-o merge0 (-v/-V "<value>" || -f "<path>") [-p "<path>"]\n\t\t\t\tMerge object properties that DO NOT intersect with source JSON\n\t\t\t\tCan pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t  merge1\n\t\t\t-o merge1 (-v/-V "<value>" || -f "<path>") [-p "<path>"]\n\t\t\t\tMerge object properties that intersect with source JSON\n\t\t\t\tCan pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t\t\t\n\t\t-p "<path>":\n\t\t\t-p "<path>" the target path expressed in JSON Pointer (RFC 6901) or JSONPath\n\n\t\t-f "<from path>":\n\t\t\tcopy and move require a JSON Pointer (RFC 6901) or JSONPath expression\n\n\t\t-v/-V "<value>":\n\t\t\t-v "<JSON value>" is a single JSON text\n\t\t\t-V "<filespec to JSON value>" is a file path to a single JSON text\n\t\t  Options for -v/-V:\n\t\t\t-s treat input as a string\n\t\t\t\t\nJSONPath Primer\n\t$\n\t\tthe root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $\n\t.key or ['key']\n\t\ta "child" operator for an object property named 'key' in a JSON object\n\t..key or ..['key']\n\t\tis a recursive operator that will find all properties named 'key' within the object\n\t['key name'] or ["key \ud83d\udd11"]\n\t\tproperty names with spaces or escaped values MUST use bracket notation\n\t.* or [*]\n\t\t* returns the values of all the keys within an object or all indices in an array\n\t[start:stop:step]\n\t\tslice operation for arrays, accepts pos/neg integers, script and filter expressions, or leave empty\n\t[?(@ >= 3 && @ <= 10 )] or [?(@.key == "string" || @['key2'] == "string2")] or the off-spec [?(@name =~ /key.*/)], etc...\n\t\tfilter expressions can return one or more matching nodes\n\t\t@ is the current object, dot and bracket notation can be used to query child nodes\n\t\tUse logical operators like: == (equal), != (not equal), > (greater than), < (less than), >= (greater or equal), <= (less or equal)\n\t\tMultiple criteria can be evaluated with && (AND) and || (OR). Regular expressions can also be used: '=~ /regexp/'\n\t\t@.length is the length of an array or string\n\t\t@name is the current property name (an off-spec but useful quirk of the original Goessner code)\n\t[(@.length/2)]\n\t\tscript expression, returns a single value, use as an array index selector\n\t[1] or [-1]\n\t\tarray index, integers only, positive starts at the beginning, negative references from the end \n\t["-"]\n\t\tThe nonexistent array member after the last array element\n\t\tUse with data alteration operations, will always be empty for queries of arrays\n\t\tAkin to /- in JSON Pointer, if used with an object simply looks for a key named "-"\n\t["a","b"]\n\t\tunion, a comma separated list of expressions values of multiple properties at the same level in an object\n\t\tUnions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices\n\n\tHorrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]\n\tFor a more examples: https://github.com/brunerd/jsonpath\n\nJSON Pointer (RFC 6901) Primer\n\t""\t\tan empty string represents the JSON document\n\t/\t\tis the root or next child node with a property named "" an empty string (JSONPath $[""])\n\t/key\t\tproperty named key in an object\n\t/1\t\tproperty named 1 in an object or a numeric index in an array\n\t/-\t\tthe nonexistent array member after the last array element, use with data alteration operations\n\t~\t\tin a property name must be escaped as ~0\n\t/\t\tin a property name must be escaped as ~1\n\n\tExample: /JSON pointer/does/this/1/thing/well\n
+jpt (v1.0.1) - JSON Power Tool (https://github.com/brunerd/jpt)\n\nUsage:\njpt [options] [<query>] [<file>]\n\nArguments:\n\t[<query>] - JSONPath or JSON Pointer expression (optional), returns entire document otherwise.\n\t[<file>] - path to JSON file\n\nNotes:\n\tDefault output mode is JSON (RFC8259/STD90)\n\tMultiple JSON texts will be output as a JSON Text Sequence (RFC 7464) (use -M to change)\n\tIf no file is specified, jpt will await input by file redirection, Unix pipe, or via /dev/stdin (end with Control-D)\n\tjpt accepts JSON, JSON text Sequences, and non-JSON mutations such as JSON5, NDJSON and jpt's own JSONPath Object Literals\n\tJSON Text Sequences will be strictly parsed to RFC 7464 specs, non-JSON elements are only tolerated in single and concatenated JSON texts\n\tNon-JSON elements are corrected automatically, if possible, before parsing (use -c for comments via stderr with an exit status of 1)\n\t  Mostly JSON5 Rehabilitations:\n\t    Unquoted object keys and single quoted strings are converted to JSON strings\n\t    Additional Unicode whitespaces and paragraph separators are converted to normal spaces (0x20) and newlines (0x0A)\n\t    Trailing commas are removed from object and array elements\n\t    Explicit plus signs on numbers are removed, decimals without leading zeroes are restored\n\t    Multi-line strings with escaped line breaks are reverted to standard JSON strings\n\t      Literal tabs in strings are removed also\n\t    Escaped character conversions: \n\t\t  \\0 to null\n\t\t  \\v to '\\u000c'\n\t    JSON5 number type conversions: \n\t\t  NaN to null (use -8 to convert to "NaN" string)\n\t\t  Inifinity to null (use -I to convert to "Infinity" string, with sign if specified)\n\t    Single-line (//) and multi-line (/* */) style comments are removed\n\t\t  Additionally multi-line XML (<!-- -->) and single line Shell (#), ASM (;), and Lua (--) comments are removed\n\t\nGeneral Options:\n\t-h this help screen\n\nJSON Output Options:\n\t-i "<number/string>" indent number of spaces (0-10) or use a <string> for each level of indent\n\t-O Order property names in objects alphabetically\n\t-u Unicode escape (\\u) all characters above 0x7E\n\nAdvanced JSON Output Options:\n\t-a always output result in an array\n\t-c comment on corrections to non-standard JSON via stderr output (with exit status of 1)\n\t-F Flatten array output\n\t-I Convert JSON5 +/-Infinity value to a string with signedness (otherwise converts to null)\n\t-N Nested single element arrays are reduced\n\t-8 Convert JSON5 NaN to a string (otherwise converts to null)\n\t-/ Escape solidus / with a reverse solidus like \\/, useful for HTML with embedded JSON encoded HTML\n\nInput Options:\n\t-D Detect truncation within objects and arrays in concatenated JSON only\n\t-g path-only JSONPath Object Literals are assigned a value of null ("gratis nulls")\n\t-G Guard previously defined JSONPath Object Literals from being modified by new statements\n\t-H Help truncated JSON by closing up open strings, objects and arrays\n\t-S Treat input as a JSON string\n\nMultiple JSON Text Options:\n\t-M "<value>" - options for working with multiple JSON texts\n\t\tS - Output JSON Text Sequences strictly conforming to RFC 7464 (default)\n\t\tN - Output newline delimited JSON texts\n\t\tC - Output concatenated JSON texts\n\t\tA - Gather JSON texts into an array, post-query and post-patching\n\t\ta - Gather JSON texts into an array, pre-query and pre-patching \n\nAlternate Output Modes (non-JSON):\n\t-l output the length of the resulting array, object property count, or length of string\n\n\t-J JSONPath path(s) of the object returned by the query\n\t-j JSONPath path(s) matched by the query results\n\n\t-R JSON Pointer path(s) of the object returned by the query\n\t-r JSON Pointer path(s) matched by the query results\n\t\tSpecifiying -EW or -Ew encodes both -r and -R JSON Pointer paths in URI fragment style\n\n\t  -J and -R path output options:\n\t\t-C append the "constructor" type (Array, Object, String, Boolean, Number, or null)\n\t\t-K/-k print property (key) names and array indices only with no preceding path, default indent is 2\n\t\t\t-i "<value>" indent spaces (0-10) or character for each level of indent\n\n\t-L JSONPath Object Literal notation output of the resulting object\n\t\tJPOL Format: <JSONPath expression>=<JSON value>\n\t\t\t<JSONPath expression> is simply Javascript expression syntax with $ as the object name\n\t\t\t\tExample: $.key, $["key"], $['key'], or $[0]\n\t\t\t<JSON value> is any valid JSON value (plus single quoted strings)\n\t\t\t\tExample: 'string', "string", [], {}, 42, true, false, null\n\n\t  JSONPath output options for -L -J and -j:\n\t\t-d Use dot notation for object property names when possible, rather than bracket notation\n\t\t-q Use single quotes for bracketed property names, string values remain JSON double quoted\n\t\t-Q Use single quotes for BOTH bracketed property names AND string values (-L only)\n\t\t-u encode characters above 7E with \\u escape\n\n\t  Output limiting options for -L, -J, and -R:\n\t\t-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects\n\t\t-Z "<int>" Depth\n\t\t\tCombined with -L it will coalesce lower depth levels into a compound JSON object/array statement\n\t\t\tCombined with -P both -J and -R will return only purely primitive nodes at or below the Z level\n\n\t-T textual output of all data (omits property names and indices)\n\t  Options:\n\t\t-e Print escaped characters literally: \\b \\f \\n \\r \\t \\v and \\\\ (escapes formats only)\n\t\t-i "<value>" indent spaces (0-10) or character string for each level of indent\n\t\t-n convery null value to string 'null' (pre-encoding)\n\n\t\t-E "<value>" encoding options for -T output:\n\n\t\t  Encodes string characters below 0x20 and above 0x7E with pass-through for all else:\n\t\t\tx \t"\\x" prefixed hexadecimal UTF-8 strings\n\t\t\tO \t"\\nnn" style octal for UTF-8 strings\n\t\t\t0 \t"\\0nnn" style octal for UTF-8 strings\n\t\t\tu \t"\\u" prefixed Unicode for UTF-16 strings\n\t\t\tU \t"\\U "prefixed Unicode Code Point strings\n\t\t\tE \t"\\u{...}" prefixed ES2016 Unicode Code Point strings\n\t\t\tW \t"%nn" Web encoded UTF-8 string using encodeURI (respects scheme and domain of URL)\n\t\t\tw \t"%nn" Web encoded UTF-8 string using encodeURIComponent (encodes all components URL)\n\n\t\t\t  -A encodes ALL characters\n\t\t\n\t\t  Encodes both strings and numbers with pass-through for all else:\n\t\t\th \t"0x" prefixed lowercase hexadecimal, UTF-8 strings\n\t\t\tH \t"0x" prefixed uppercase hexadecimal, UTF-8 strings\n\t\t\to \t"0o" prefixed octal, UTF-8 strings\n\t\t\t6 \t"0b" prefixed binary, 16 bit _ spaced numbers and UTF-16 strings\n\t\t\tB \t"0b" prefixed binary, 8 bit _ spaced numbers and UTF-16 strings\n\t\t\tb \t"0b" prefixed binary, 8 bit _ spaced numbers and UTF-8 strings\n\n\t\t\t  -U whitespace is left untouched (not encoded)\n\nData Processing:\n\tjpt can apply JSON Patch (RFC 6902), JSON Merge Patch (RFC 7396), and other operations to JSON text(s)\n\n\tJSON Patch processing:\n\t\t-X "<filepath to JSON Patch>" a file path to a JSON Patch array (RFC 6902)\n\t\t-x "<inline JSON Patch>" inline JSON Patch text (RFC 6902)\n\t\t\n\tJSON Patch Example (from RFC 6902):\n\t\t [\n\t\t\t { "op": "test", "path": "/a/b/c", "value": "foo" },\n\t\t\t { "op": "remove", "path": "/a/b/c" },\n\t\t\t { "op": "add", "path": "/a/b/c", "value": [ "foo", "bar" ] },\n\t\t\t { "op": "replace", "path": "/a/b/c", "value": 42 },\n\t\t\t { "op": "move", "from": "/a/b/c", "path": "/a/b/d" },\n\t\t\t { "op": "copy", "from": "/a/b/d", "path": "/a/b/e" }\n\t\t]\n\n\tSingle operations for JSON Patch, JSON Merge Patch, and others can be crafted using -o plus -p (path) and possibly -f (from) or -v/-V (value)\n\n\t\t-o "<operation>":\n\t\t [JSON Patch Operations]\n\t\t  add\n\t\t\t-o add -p "<path>" -v "<value>"\n\t\t\t\tadd/replace value in object or insert value into array index (RFC 6902)\n\t\t  replace\n\t\t\t-o replace -p "<path>" -v "<value>"\n\t\t\t\treplace value of existing object property (key) or array index (RFC 6902)\n\t\t  remove\n\t\t\t-o remove -p "<path>"\n\t\t\t\tremove specified path from the document (RFC 6902)\n\t\t  move\n\t\t\t-o move -f "<from>" -p "<path>"\n\t\t\t\tmove a path to a new or existing path/node(RFC 6902)\n\t\t  copy\n\t\t\t-o copy -f "<from>" -p "<path>"\n\t\t\t\tcopy a path to a new or existing path/node (RFC 6902)\n\t\t  test\n\t\t\t-o test -p "<path>" -v "<value>"\n\t\t\t\ttest if a path matches a value exactly (RFC 6902), return 0 if true, 1 if false\n\n\t\t [Other Operations]\n\t\t  diff\n\t\t\t-o diff -v "<value>"\n\t\t\t\tGiven a value, compare with JSON text and produce a JSON Merge Patch (RFC 7396) document\n\t\t  mergepatch\n\t\t\t-o mergepatch (-v/-V "<value>" || -f "<path>") [-p <path>]\n\t\t\t\tJSON Merge Patch (RFC 7396) operation: null values delete target object property\n\t\t\t\tCan pull data from -v/-V "<value>" OR -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t  merge\n\t\t\t-o merge (-v/-V "<value>" || -f "<path>") [-p "<path>"]\n\t\t\t\tNon-RFC 7396 merging operation, object properties with null values are NOT removed\n\t\t\t\tCan pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t  merge0\n\t\t\t-o merge0 (-v/-V "<value>" || -f "<path>") [-p "<path>"]\n\t\t\t\tMerge object properties that DO NOT intersect with source JSON\n\t\t\t\tCan pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t  merge1\n\t\t\t-o merge1 (-v/-V "<value>" || -f "<path>") [-p "<path>"]\n\t\t\t\tMerge object properties that intersect with source JSON\n\t\t\t\tCan pull data from -v/-V "<value>" or -f "<path>", can merge to specific -p "<path>" (JSONPaths allows multiple)\n\t\t\t\t\n\t\t-p "<path>":\n\t\t\t-p "<path>" the target path expressed in JSON Pointer (RFC 6901) or JSONPath\n\n\t\t-f "<from path>":\n\t\t\tcopy and move require a JSON Pointer (RFC 6901) or JSONPath expression\n\n\t\t-v/-V "<value>":\n\t\t\t-v "<JSON value>" is a single JSON text\n\t\t\t-V "<filespec to JSON value>" is a file path to a single JSON text\n\t\t  Options for -v/-V:\n\t\t\t-s treat input as a string\n\t\t\t\t\nJSONPath Primer\n\t$\n\t\tthe root of the JSON document, ALL JSONPath QUERIES MUST BEGIN WITH $\n\t.key or ['key']\n\t\ta "child" operator for an object property named 'key' in a JSON object\n\t..key or ..['key']\n\t\tis a recursive operator that will find all properties named 'key' within the object\n\t['key name'] or ["key \ud83d\udd11"]\n\t\tproperty names with spaces or escaped values MUST use bracket notation\n\t.* or [*]\n\t\t* returns the values of all the keys within an object or all indices in an array\n\t[start:stop:step]\n\t\tslice operation for arrays, accepts pos/neg integers, script and filter expressions, or leave empty\n\t[?(@ >= 3 && @ <= 10 )] or [?(@.key == "string" || @['key2'] == "string2")] or the off-spec [?(@name =~ /key.*/)], etc...\n\t\tfilter expressions can return one or more matching nodes\n\t\t@ is the current object, dot and bracket notation can be used to query child nodes\n\t\tUse logical operators like: == (equal), != (not equal), > (greater than), < (less than), >= (greater or equal), <= (less or equal)\n\t\tMultiple criteria can be evaluated with && (AND) and || (OR). Regular expressions can also be used: '=~ /regexp/'\n\t\t@.length is the length of an array or string\n\t\t@name is the current property name (an off-spec but useful quirk of the original Goessner code)\n\t[(@.length/2)]\n\t\tscript expression, returns a single value, use as an array index selector\n\t[1] or [-1]\n\t\tarray index, integers only, positive starts at the beginning, negative references from the end \n\t["-"]\n\t\tThe nonexistent array member after the last array element\n\t\tUse with data alteration operations, will always be empty for queries of arrays\n\t\tAkin to /- in JSON Pointer, if used with an object simply looks for a key named "-"\n\t["a","b"]\n\t\tunion, a comma separated list of expressions values of multiple properties at the same level in an object\n\t\tUnions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices\n\n\tHorrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]\n\tFor a more examples: https://github.com/brunerd/jsonpath\n\nJSON Pointer (RFC 6901) Primer\n\t""\t\tan empty string represents the JSON document\n\t/\t\tis the root or next child node with a property named "" an empty string (JSONPath $[""])\n\t/key\t\tproperty named key in an object\n\t/1\t\tproperty named 1 in an object or a numeric index in an array\n\t/-\t\tthe nonexistent array member after the last array element, use with data alteration operations\n\t~\t\tin a property name must be escaped as ~0\n\t/\t\tin a property name must be escaped as ~1\n\n\tExample: /JSON pointer/does/this/1/thing/well\n
 EOT
 
 ## CHECK FOR JSC
@@ -3323,7 +3583,8 @@ while getopts ":8cKkDSQPAE:Ff:lNLOuo:i:aCIeHhdnqgGJzjsRrTtUwZ:v:V:x:X:p:M:%/" op
 		#text encoding options
 		#convert % flag (old) to W (new)
 		'E')[ -z "${encodingArg}" ] && encodingArg+="${OPTARG/\%/W}";;
-		'h')echo -e "${helpText}" > /dev/stderr; exit;;
+		#nicely paginate with less
+		'h')echo -e "${helpText}" | less; exit;;
 
 		#do nothing for unknown options
 		'?'):;;
@@ -3395,6 +3656,9 @@ elif [ -f "${fileArg:=/dev/stdin}" ]; then
 	{ errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "${fileArg}" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}" "${multiOutArg}"; } 1>&3 ; } 2>&1); } 3>&1
 #pipe via cat
 else
+	#if file descriptor is 0 we do have no input
+	[[ -t '0' ]] && echo -e "$(echo -e "${helpText}" | head -n 1)\nUsage: jpt [options] [query] [filepath] (see jpt -h for more help...)" >/dev/stderr && exit 0
+	
 	#just cat
 	{ errOut=$( { { "${jsc}" -e "${JSCode}" -- "${queryArg}" "/dev/stdin" "${options}" "${spaceArg}" "${valueArg}" "${pathArg}" "${depthArg}" "${encodingArg}" "${alterOp}" "${fromArg}" "${JSONPatchArg}" "${multiOutArg}" <<< "$(cat)"; } 1>&3 ; } 2>&1); } 3>&1
 fi
@@ -3402,7 +3666,7 @@ fi
 #if we have any output in errOut it came from stderr, strip Debug since we might use this for older jsc versions
 #/bin/echo will not process whitespaces, this is how we like it
 if [ -n "$(sed -e '/^--> Debug:/d' <<< "${errOut}")" ]; then /bin/echo "$errOut" >&2; return 1; fi
-}
+)
 
 ########
 # MAIN #
