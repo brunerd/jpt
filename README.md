@@ -10,41 +10,45 @@ See my blog for articles, examples, and musing on the jpt: https://www.brunerd.c
 ## Examples
 Please see the [brunerd JSONPath](https://github.com/brunerd/jsonpath) GitHub page for an *extensive* list of example JSONPath queries.
   
-[JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/) has a richly expressive query syntax that can do things JSON Pointer can't do:
+[JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/) has a richly expressive syntax that can query the contents of JSON in ways JSON Pointer can't. For example **filter expressions** can find objects within an array:
 ```
-jpt '$.please.be["patient","excited"]' <<< $'{"please":{"be":{"patient":"Coming Soon","excited":"I can\'t wait!"}}}' 
-[
-  "Coming Soon",
-  "I can't wait!"
-]
+% jpt '$.object_array[?(@.color == "blue")]' <<< '{"object_array":[{"id":2,"color":"red"},{"id":1,"color":"blue"}]}'
+{
+  "id": 1,
+  "color": "blue"
+}
 ```
-  
-[JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a *single* property only
+The values within the found objects can be specifically reported:
 ```
-jpt /please/be/excited <<< $'{"please":{"be":{"patient":"Coming Soon","excited":"I can\'t wait!"}}}'
-"I can't wait!" 
+% jpt '$.object_array[?(@.color == "blue")].id' <<< '{"object_array":[{"id":2,"color":"red"},{"id":1,"color":"blue"}]}'
+1
 ```
 
+[JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a *single* property only, this uses the `-T` option to print a JSON string as text and not encoded within double quotes.
+```
+% jpt -T /object/array/1/mood <<< $'{"object":{"array":[{"mood":"excited"},{"mood":"intrigued"}]}}'
+intrigued
+```
 
 ## Help File (-h)
 ```
-jpt (v1.0.0) - JSON Power Tool (https://github.com/brunerd/jpt)
+jpt (v1.0.2) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
 
 Arguments:
-	[<query>] - JSONPath or JSON Pointer expression (optional), returns entire document otherwise.
+	[<query>] - JSONPath, JSON Pointer, or plutil-style keypath expression (optional), returns entire document otherwise.
 	[<file>] - path to JSON file
 
 Notes:
 	Default output mode is JSON (RFC8259/STD90)
-	Multiple JSON texts will be output as a JSON Text Sequence (RFC 7464) (use -M to change)
-	If no file is specified, jpt will await input by file redirection, Unix pipe, or via /dev/stdin (end with Control-D)
+	Multiple JSON texts will be output as a JSON Text Sequence (RFC 7464) (use -M to change behavior and processing)
+	jpt accepts input by file redirection, Unix pipe, here string, heredoc and via /dev/stdin (end with Control-D)
 	jpt accepts JSON, JSON text Sequences, and non-JSON mutations such as JSON5, NDJSON and jpt's own JSONPath Object Literals
 	JSON Text Sequences will be strictly parsed to RFC 7464 specs, non-JSON elements are only tolerated in single and concatenated JSON texts
 	Non-JSON elements are corrected automatically, if possible, before parsing (use -c for comments via stderr with an exit status of 1)
-	  Mostly JSON5 Rehabilitations:
+	  JSON5 Rehabilitations (mostly):
 	    Unquoted object keys and single quoted strings are converted to JSON strings
 	    Additional Unicode whitespaces and paragraph separators are converted to normal spaces (0x20) and newlines (0x0A)
 	    Trailing commas are removed from object and array elements
@@ -116,7 +120,7 @@ Alternate Output Modes (non-JSON):
 
 	  JSONPath output options for -L -J and -j:
 		-d Use dot notation for object property names when possible, rather than bracket notation
-		-q Use single quotes for bracketed property names, string values remain JSON doublew quoted
+		-q Use single quotes for bracketed property names, string values remain JSON double quoted
 		-Q Use single quotes for BOTH bracketed property names AND string values (-L only)
 		-u encode characters above 7E with \u escape
 
@@ -130,7 +134,7 @@ Alternate Output Modes (non-JSON):
 	  Options:
 		-e Print escaped characters literally: \b \f \n \r \t \v and \\ (escapes formats only)
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
-		-n convery null value to string 'null' (pre-encoding)
+		-n convert null value to string 'null' (pre-encoding)
 
 		-E "<value>" encoding options for -T output:
 
@@ -243,14 +247,15 @@ JSONPath Primer
 	[start:stop:step]
 		slice operation for arrays, accepts pos/neg integers, script and filter expressions, or leave empty
 	[?(@ >= 3 && @ <= 10 )] or [?(@.key == "string" || @['key2'] == "string2")] or the off-spec [?(@name =~ /key.*/)], etc...
-		filter expressions can return one or more matching nodes
+		filter expressions can return one or more matching objects within an array
 		@ is the current object, dot and bracket notation can be used to query child nodes
 		Use logical operators like: == (equal), != (not equal), > (greater than), < (less than), >= (greater or equal), <= (less or equal)
 		Multiple criteria can be evaluated with && (AND) and || (OR). Regular expressions can also be used: '=~ /regexp/'
 		@.length is the length of an array or string
 		@name is the current property name (an off-spec but useful quirk of the original Goessner code)
 	[(@.length/2)]
-		script expression, returns a single value, use as an array index selector
+		"script expression", returns a single value, use as an array index selector that allow division
+		Note: This will not make it into the IETF JSONPath spec
 	[1] or [-1]
 		array index, integers only, positive starts at the beginning, negative references from the end 
 	["-"]
@@ -261,9 +266,8 @@ JSONPath Primer
 		union, a comma separated list of expressions values of multiple properties at the same level in an object
 		Unions allow for: quoted property names (single or double), numbers, *, filter and script expressions, and slices
 
-	Horrible example: $..["wow"].this['is'][1][?(@.ugly == "query")][:(@.length/2 - 1):-2][*]
-	For a more examples: https://github.com/brunerd/jsonpath
-
+	For more examples: https://github.com/brunerd/jsonpath
+	
 JSON Pointer (RFC 6901) Primer
 	""		an empty string represents the JSON document
 	/		is the root or next child node with a property named "" an empty string (JSONPath $[""])
@@ -274,6 +278,20 @@ JSON Pointer (RFC 6901) Primer
 	/		in a property name must be escaped as ~1
 
 	Example: /JSON pointer/does/this/1/thing/well
+
+keypath primer:
+	This arcane summoning hails from ye olde NextStep and still used by plutil
+	
+	.		a period is used to delimit key names, 
+				literal periods can be backslash (\) escaped
+	key		an object name or array element, there is no root character
+								
+	Keypath Example: this.is.1.ugly.key\.path
+
+	In JSON Pointer: /this/is/1/ugly/key.path
+	And in JSONPath: $.this.is[1].ugly.["key.path"]
+
+	Note: If a keypath query begins with characters that collide with JSONPath ($), jq-style (. or [) or JSON Pointer (/) it will be evaluated as one of those.
 ```
 
 ### Requirements:
