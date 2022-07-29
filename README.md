@@ -32,7 +32,7 @@ intrigued
 
 ## Help File (-h)
 ```
-jpt (v1.0.2) - JSON Power Tool (https://github.com/brunerd/jpt)
+jpt (v1.0.3) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
@@ -132,7 +132,7 @@ Alternate Output Modes (non-JSON):
 
 	-T textual output of all data (omits property names and indices)
 	  Options:
-		-e Print escaped characters literally: \b \f \n \r \t \v and \\ (escapes formats only)
+		-e Print escaped characters literally: \b \f \n \r \t \v and \\ (\ escaped formats only)
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
 		-n convert null value to string 'null' (pre-encoding)
 
@@ -148,6 +148,7 @@ Alternate Output Modes (non-JSON):
 			W 	"%nn" Web encoded UTF-8 string using encodeURI (respects scheme and domain of URL)
 			w 	"%nn" Web encoded UTF-8 string using encodeURIComponent (encodes all components URL)
 
+			  -W encodes whitespace characters also
 			  -A encodes ALL characters
 		
 		  Encodes both strings and numbers with pass-through for all else:
