@@ -32,7 +32,7 @@ intrigued
 
 ## Help File (-h)
 ```
-jpt (v1.0.3) - JSON Power Tool (https://github.com/brunerd/jpt)
+jpt (v1.0.4) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
@@ -247,16 +247,17 @@ JSONPath Primer
 		* returns the values of all the keys within an object or all indices in an array
 	[start:stop:step]
 		slice operation for arrays, accepts pos/neg integers, script and filter expressions, or leave empty
-	[?(@ >= 3 && @ <= 10 )] or [?(@.key == "string" || @['key2'] == "string2")] or the off-spec [?(@name =~ /key.*/)], etc...
+	[?(@.id >= 1 && @.id <= 10 )] or [?(@.key == "string" && !@['key2'])] or the off-spec [?(@name =~ /key.*/)], etc...
 		filter expressions can return one or more matching objects within an array
 		@ is the current object, dot and bracket notation can be used to query child nodes
 		Use logical operators like: == (equal), != (not equal), > (greater than), < (less than), >= (greater or equal), <= (less or equal)
 		Multiple criteria can be evaluated with && (AND) and || (OR). Regular expressions can also be used: '=~ /regexp/'
+		You can negate a value using !
 		@.length is the length of an array or string
 		@name is the current property name (an off-spec but useful quirk of the original Goessner code)
 	[(@.length/2)]
 		"script expression", returns a single value, use as an array index selector that allow division
-		Note: This will not make it into the IETF JSONPath spec
+		Note: These will NOT make it into the IETF JSONPath spec
 	[1] or [-1]
 		array index, integers only, positive starts at the beginning, negative references from the end 
 	["-"]
