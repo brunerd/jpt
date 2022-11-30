@@ -1,3 +1,37 @@
+# jpt
+JSON Power Tool: Query and manipulate JSON and JSON Text Sequences using [JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/), [JSON Pointer](https://tools.ietf.org/html/rfc6901), [JSON Patch](http://tools.ietf.org/html/rfc6902), and [JSON Merge Patch](https://tools.ietf.org/html/rfc7386).
+
+Written in Javascript (ES5) and wrapped in a bit of shell, it can be used standalone or embedded in your bash/zsh scripts, requiring only `jsc` which has been standard on Macs since 10.4 and is widely available for Linux and even Windows with Linux subsystem installed.  
+
+It is a non-compiled script, so it can be easily studied, maintained, or modified. It avoids the need for code-signing and notarization on the Mac platform.  
+
+See my blog for articles, examples, and musing on the jpt: https://www.brunerd.com/blog/category/projects/jpt/
+
+## Examples
+Please see the [brunerd JSONPath](https://github.com/brunerd/jsonpath) GitHub page for an *extensive* list of example JSONPath queries.
+  
+[JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/) has a richly expressive syntax that can query the contents of JSON in ways JSON Pointer can't. For example **filter expressions** can find objects within an array:
+```
+% jpt '$.object_array[?(@.color == "blue")]' <<< '{"object_array":[{"id":2,"color":"red"},{"id":1,"color":"blue"}]}'
+{
+  "id": 1,
+  "color": "blue"
+}
+```
+The values within the found objects can be specifically reported:
+```
+% jpt '$.object_array[?(@.color == "blue")].id' <<< '{"object_array":[{"id":2,"color":"red"},{"id":1,"color":"blue"}]}'
+1
+```
+
+[JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a *single* property only, this uses the `-T` option to print a JSON string as text and not encoded within double quotes.
+```
+% jpt -T /object/array/1/mood <<< $'{"object":{"array":[{"mood":"excited"},{"mood":"intrigued"}]}}'
+intrigued
+```
+
+## Help File (-h)
+```
 jpt (v1.0.5) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
@@ -260,3 +294,10 @@ keypath primer:
 	And in JSONPath: $.this.is[1].ugly.["key.path"]
 
 	Note: If a keypath query begins with characters that collide with JSONPath ($), jq-style (. or [) or JSON Pointer (/) it will be evaluated as one of those.
+```
+
+### Requirements:
+bash or zsh on a supported OS:
+* macOS 10.4+  
+* Linux with jsc
+* Windows with Linux subsystem and jsc  
