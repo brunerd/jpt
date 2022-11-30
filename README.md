@@ -1,38 +1,4 @@
-# jpt
-JSON Power Tool: Query and manipulate JSON and JSON Text Sequences using [JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/), [JSON Pointer](https://tools.ietf.org/html/rfc6901), [JSON Patch](http://tools.ietf.org/html/rfc6902), and [JSON Merge Patch](https://tools.ietf.org/html/rfc7386).
-
-Written in Javascript (ES5) and wrapped in a bit of shell, it can be used standalone or embedded in your bash/zsh scripts, requiring only `jsc` which has been standard on Macs since 10.4 and is widely available for Linux and even Windows with Linux subsystem installed.  
-
-It is a non-compiled script, so it can be easily studied, maintained, or modified. It avoids the need for code-signing and notarization on the Mac platform.  
-
-See my blog for articles, examples, and musing on the jpt: https://www.brunerd.com/blog/category/projects/jpt/
-
-## Examples
-Please see the [brunerd JSONPath](https://github.com/brunerd/jsonpath) GitHub page for an *extensive* list of example JSONPath queries.
-  
-[JSONPath](https://datatracker.ietf.org/doc/draft-ietf-jsonpath-base/) has a richly expressive syntax that can query the contents of JSON in ways JSON Pointer can't. For example **filter expressions** can find objects within an array:
-```
-% jpt '$.object_array[?(@.color == "blue")]' <<< '{"object_array":[{"id":2,"color":"red"},{"id":1,"color":"blue"}]}'
-{
-  "id": 1,
-  "color": "blue"
-}
-```
-The values within the found objects can be specifically reported:
-```
-% jpt '$.object_array[?(@.color == "blue")].id' <<< '{"object_array":[{"id":2,"color":"red"},{"id":1,"color":"blue"}]}'
-1
-```
-
-[JSON Pointer](https://tools.ietf.org/html/rfc6901) is extremely simple and can query a *single* property only, this uses the `-T` option to print a JSON string as text and not encoded within double quotes.
-```
-% jpt -T /object/array/1/mood <<< $'{"object":{"array":[{"mood":"excited"},{"mood":"intrigued"}]}}'
-intrigued
-```
-
-## Help File (-h)
-```
-jpt (v1.0.4) - JSON Power Tool (https://github.com/brunerd/jpt)
+jpt (v1.0.5) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
@@ -56,8 +22,8 @@ Notes:
 	    Multi-line strings with escaped line breaks are reverted to standard JSON strings
 	      Literal tabs in strings are removed also
 	    Escaped character conversions: 
-		  \0 to null
-		  \v to '\u000c'
+		  \\0 to null
+		  \\v to '\\u000c'
 	    JSON5 number type conversions: 
 		  NaN to null (use -8 to convert to "NaN" string)
 		  Inifinity to null (use -I to convert to "Infinity" string, with sign if specified)
@@ -70,7 +36,7 @@ General Options:
 JSON Output Options:
 	-i "<number/string>" indent number of spaces (0-10) or use a <string> for each level of indent
 	-O Order property names in objects alphabetically
-	-u Unicode escape (\u) all characters above 0x7E
+	-u Unicode escape (\\u) all characters above 0x7E
 
 Advanced JSON Output Options:
 	-a always output result in an array
@@ -79,7 +45,7 @@ Advanced JSON Output Options:
 	-I Convert JSON5 +/-Infinity value to a string with signedness (otherwise converts to null)
 	-N Nested single element arrays are reduced
 	-8 Convert JSON5 NaN to a string (otherwise converts to null)
-	-/ Escape solidus / with a reverse solidus like \/, useful for HTML with embedded JSON encoded HTML
+	-/ Escape solidus / with a reverse solidus like \\/, useful for HTML with embedded JSON encoded HTML
 
 Input Options:
 	-D Detect truncation within objects and arrays in concatenated JSON only
@@ -122,7 +88,7 @@ Alternate Output Modes (non-JSON):
 		-d Use dot notation for object property names when possible, rather than bracket notation
 		-q Use single quotes for bracketed property names, string values remain JSON double quoted
 		-Q Use single quotes for BOTH bracketed property names AND string values (-L only)
-		-u encode characters above 7E with \u escape
+		-u encode characters above 7E with \\u escape
 
 	  Output limiting options for -L, -J, and -R:
 		-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects
@@ -132,19 +98,19 @@ Alternate Output Modes (non-JSON):
 
 	-T textual output of all data (omits property names and indices)
 	  Options:
-		-e Print escaped characters literally: \b \f \n \r \t \v and \\ (\ escaped formats only)
+		-e Print escaped characters literally: \\b \\f \\n \\r \\t \\v and \\\\ (\\ escaped formats only)
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
 		-n convert null value to string 'null' (pre-encoding)
 
 		-E "<value>" encoding options for -T output:
 
 		  Encodes string characters below 0x20 and above 0x7E with pass-through for all else:
-			x 	"\x" prefixed hexadecimal UTF-8 strings
-			O 	"\nnn" style octal for UTF-8 strings
-			0 	"\0nnn" style octal for UTF-8 strings
-			u 	"\u" prefixed Unicode for UTF-16 strings
-			U 	"\U "prefixed Unicode Code Point strings
-			E 	"\u{...}" prefixed ES2016 Unicode Code Point strings
+			x 	"\\x" prefixed hexadecimal UTF-8 strings
+			O 	"\\nnn" style octal for UTF-8 strings
+			0 	"\\0nnn" style octal for UTF-8 strings
+			u 	"\\u" prefixed Unicode for UTF-16 strings
+			U 	"\\U "prefixed Unicode Code Point strings
+			E 	"\\u{...}" prefixed ES2016 Unicode Code Point strings
 			W 	"%nn" Web encoded UTF-8 string using encodeURI (respects scheme and domain of URL)
 			w 	"%nn" Web encoded UTF-8 string using encodeURIComponent (encodes all components URL)
 
@@ -285,19 +251,12 @@ keypath primer:
 	This arcane summoning hails from ye olde NextStep and still used by plutil
 	
 	.		a period is used to delimit key names, 
-				literal periods can be backslash (\) escaped
+				literal periods can be backslash (\\) escaped
 	key		an object name or array element, there is no root character
 								
-	Keypath Example: this.is.1.ugly.key\.path
+	Keypath Example: this.is.1.ugly.key\\.path
 
 	In JSON Pointer: /this/is/1/ugly/key.path
 	And in JSONPath: $.this.is[1].ugly.["key.path"]
 
 	Note: If a keypath query begins with characters that collide with JSONPath ($), jq-style (. or [) or JSON Pointer (/) it will be evaluated as one of those.
-```
-
-### Requirements:
-bash or zsh on a supported OS:
-* macOS 10.4+  
-* Linux with jsc
-* Windows with Linux subsystem and jsc  
