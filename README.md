@@ -32,7 +32,7 @@ intrigued
 
 ## Help File (-h)
 ```
-jpt (v1.0.5) - JSON Power Tool (https://github.com/brunerd/jpt)
+jpt (v1.0.6) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
@@ -56,8 +56,8 @@ Notes:
 	    Multi-line strings with escaped line breaks are reverted to standard JSON strings
 	      Literal tabs in strings are removed also
 	    Escaped character conversions: 
-		  \\0 to null
-		  \\v to '\\u000c'
+		  \0 to null
+		  \v to '\u000c'
 	    JSON5 number type conversions: 
 		  NaN to null (use -8 to convert to "NaN" string)
 		  Inifinity to null (use -I to convert to "Infinity" string, with sign if specified)
@@ -70,7 +70,7 @@ General Options:
 JSON Output Options:
 	-i "<number/string>" indent number of spaces (0-10) or use a <string> for each level of indent
 	-O Order property names in objects alphabetically
-	-u Unicode escape (\\u) all characters above 0x7E
+	-u Unicode escape (\u) all characters above 0x7E
 
 Advanced JSON Output Options:
 	-a always output result in an array
@@ -79,7 +79,7 @@ Advanced JSON Output Options:
 	-I Convert JSON5 +/-Infinity value to a string with signedness (otherwise converts to null)
 	-N Nested single element arrays are reduced
 	-8 Convert JSON5 NaN to a string (otherwise converts to null)
-	-/ Escape solidus / with a reverse solidus like \\/, useful for HTML with embedded JSON encoded HTML
+	-/ Escape solidus / with a reverse solidus like \/, useful for HTML with embedded JSON encoded HTML
 
 Input Options:
 	-D Detect truncation within objects and arrays in concatenated JSON only
@@ -122,7 +122,7 @@ Alternate Output Modes (non-JSON):
 		-d Use dot notation for object property names when possible, rather than bracket notation
 		-q Use single quotes for bracketed property names, string values remain JSON double quoted
 		-Q Use single quotes for BOTH bracketed property names AND string values (-L only)
-		-u encode characters above 7E with \\u escape
+		-u encode characters above 7E with \u escape
 
 	  Output limiting options for -L, -J, and -R:
 		-P Only print Primitive data types (String, Boolean, Number, null) omitting Arrays and Objects
@@ -132,19 +132,19 @@ Alternate Output Modes (non-JSON):
 
 	-T textual output of all data (omits property names and indices)
 	  Options:
-		-e Print escaped characters literally: \\b \\f \\n \\r \\t \\v and \\\\ (\\ escaped formats only)
+		-e encode whitespace and escapes: \b \f \n \r \t \v and \\ (\ escaped formats only)
 		-i "<value>" indent spaces (0-10) or character string for each level of indent
 		-n convert null value to string 'null' (pre-encoding)
 
 		-E "<value>" encoding options for -T output:
 
 		  Encodes string characters below 0x20 and above 0x7E with pass-through for all else:
-			x 	"\\x" prefixed hexadecimal UTF-8 strings
-			O 	"\\nnn" style octal for UTF-8 strings
-			0 	"\\0nnn" style octal for UTF-8 strings
-			u 	"\\u" prefixed Unicode for UTF-16 strings
-			U 	"\\U "prefixed Unicode Code Point strings
-			E 	"\\u{...}" prefixed ES2016 Unicode Code Point strings
+			x 	"\x" prefixed hexadecimal UTF-8 strings
+			O 	"\nnn" style octal for UTF-8 strings
+			0 	"\0nnn" style octal for UTF-8 strings
+			u 	"\u" prefixed Unicode for UTF-16 strings
+			U 	"\U "prefixed Unicode Code Point strings
+			E 	"\u{...}" prefixed ES2016 Unicode Code Point strings
 			W 	"%nn" Web encoded UTF-8 string using encodeURI (respects scheme and domain of URL)
 			w 	"%nn" Web encoded UTF-8 string using encodeURIComponent (encodes all components URL)
 
@@ -285,10 +285,10 @@ keypath primer:
 	This arcane summoning hails from ye olde NextStep and still used by plutil
 	
 	.		a period is used to delimit key names, 
-				literal periods can be backslash (\\) escaped
+				literal periods can be backslash (\) escaped
 	key		an object name or array element, there is no root character
 								
-	Keypath Example: this.is.1.ugly.key\\.path
+	Keypath Example: this.is.1.ugly.key\.path
 
 	In JSON Pointer: /this/is/1/ugly/key.path
 	And in JSONPath: $.this.is[1].ugly.["key.path"]
