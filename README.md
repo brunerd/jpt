@@ -32,7 +32,7 @@ intrigued
 
 ## Help File (-h)
 ```
-jpt (v1.0.6) - JSON Power Tool (https://github.com/brunerd/jpt)
+jpt (v1.0.6b) - JSON Power Tool (https://github.com/brunerd/jpt)
 
 Usage:
 jpt [options] [<query>] [<file>]
