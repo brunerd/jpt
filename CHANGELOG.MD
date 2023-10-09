@@ -1,5 +1,6 @@
-# jpt (JSON Power Tool)
-## Change Log
+### jpt (JSON Power Tool)
+
+### Change Log
 
 ### v1.0.8
 * `OPTIND` and `OPTARG` now declared as **local** variables within `jpt` due to issues when embedded in `bash` scripts which uses global variables for them that are not sanitized within functions as it is for `zsh`
