@@ -5,7 +5,7 @@
 ### v1.0.8
 * `OPTIND` and `OPTARG` now declared as **local** variables within `jpt` due to issues when embedded in `bash` scripts which uses global variables for them that are not sanitized within functions as it is for `zsh`
 
-* Minified version (jpt.min) was not ES5 due to changes in Closure (my bad) this caused issues in macOS 10.15 and under, this has been addressed.
+* Minified version (jpt.min) was not ES5 due to [changes in Closure](https://github.com/google/closure-compiler/wiki/Releases#november-7-2021-v20211107) (my bad) this caused issues in macOS 10.15 and under, this has been addressed.
 
 ### v1.0.7 
 * Reverted back to standard `/usr/bin` sh-bang paths, using `env` can cause issues with upgraded shells
